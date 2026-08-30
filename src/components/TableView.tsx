@@ -4,8 +4,7 @@ import { PriorityBadge, SeverityBadge, StatusBadge } from './Badges';
 import { Defect, Status, Priority, Severity } from '../types';
 
 export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void }) => {
-  const { defects, users, bulkUpdateDefects } = useAppContext();
-  const [searchTerm, setSearchTerm] = useState('');
+  const { filteredDefects: globalDefects, users, bulkUpdateDefects } = useAppContext();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState<Status | ''>('');
   const [bulkPriority, setBulkPriority] = useState<Priority | ''>('');
@@ -14,11 +13,7 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
   const [sortBy, setSortBy] = useState<string>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const filteredDefects = [...defects]
-    .filter(d => 
-      d.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      d.id.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+  const filteredDefects = [...globalDefects]
     .sort((a, b) => {
       let comparison = 0;
       if (sortBy === 'priority') {
@@ -130,13 +125,6 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
             </button>
-            <input 
-              type="text" 
-              placeholder="Search ID, title..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 w-full sm:w-48 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            />
           </div>
         )}
       </div>

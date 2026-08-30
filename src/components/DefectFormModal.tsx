@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { X, Check } from 'lucide-react';
+import { X, Check, Save, Plus, Camera as CameraIcon, Upload, Trash2, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Defect, Priority, Severity, Status } from '../types';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { GoogleGenAI } from '@google/genai';
 
 interface DefectFormModalProps {
   existingDefect?: Defect;
   onClose: () => void;
+  onAutoSave?: () => void;
+  token?: string | null;
 }
 
 const STATUS_STAGES = [
@@ -18,8 +22,13 @@ const STATUS_STAGES = [
   Status.CLOSED,
 ];
 
-export const DefectFormModal = ({ existingDefect, onClose }: DefectFormModalProps) => {
-  const { addDefect, updateDefect, projects, users, currentUser, addProject, addUser } = useAppContext();
+export const DefectFormModal = ({ existingDefect, onClose, onAutoSave, token }: DefectFormModalProps) => {
+  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser } = useAppContext();
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const isInitialMount = useRef(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddNewProject = () => {
     const newProj = prompt('Enter new project name:');
@@ -64,16 +73,34 @@ export const DefectFormModal = ({ existingDefect, onClose }: DefectFormModalProp
     }
   );
 
+  // Auto-save effect
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    if (existingDefect) {
+      setSaveStatus('saving');
+      const timer = setTimeout(() => {
+        const now = new Date().toISOString();
+        const updated = { ...(formData as Defect), updatedAt: now };
+        updateDefect(updated);
+        if (onAutoSave) onAutoSave();
+        setSaveStatus('saved');
+        
+        setTimeout(() => setSaveStatus('idle'), 2500);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formData, existingDefect]); // We omit updateDefect and onAutoSave from deps intentionally
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const now = new Date().toISOString();
     
-    if (existingDefect) {
-      updateDefect({
-        ...(formData as Defect),
-        updatedAt: now
-      });
-    } else {
+    if (!existingDefect) {
       const newDefect: Defect = {
         ...(formData as Defect),
         id: `DEF-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 10)}`,
@@ -82,12 +109,96 @@ export const DefectFormModal = ({ existingDefect, onClose }: DefectFormModalProp
         updatedAt: now
       };
       addDefect(newDefect);
+      if (onAutoSave) onAutoSave();
     }
     onClose();
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleDelete = () => {
+    if (existingDefect) {
+      deleteDefect(existingDefect.id);
+      if (onAutoSave) onAutoSave();
+      onClose();
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!token) {
+      alert("Please sign in with Google to use the AI analysis feature.");
+      return;
+    }
+    if (!formData.title && !formData.description) {
+      alert("Please enter a title and description first.");
+      return;
+    }
+    
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          project: formData.project
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to analyze defect');
+      }
+
+      const result = await response.json();
+      setFormData(prev => ({
+        ...prev,
+        rootCauseAnalysis: prev.rootCauseAnalysis || result.rootCauseAnalysis || '',
+        resolutionNotes: prev.resolutionNotes || result.resolutionNotes || ''
+      }));
+    } catch (e) {
+      console.error("Gemini API Error", e);
+      alert("Failed to analyze defect. Please check your connection and try again.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 50,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera,
+        width: 800
+      });
+      if (image.dataUrl) {
+        setFormData(prev => ({ ...prev, imageUrl: image.dataUrl }));
+      }
+    } catch (e) {
+      console.log('User cancelled or camera error', e);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setFormData(prev => ({ ...prev, imageUrl: event.target!.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+    
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const currentStepIndex = STATUS_STAGES.indexOf(formData.status as Status);
@@ -255,14 +366,54 @@ export const DefectFormModal = ({ existingDefect, onClose }: DefectFormModalProp
               </div>
 
               <div className="col-span-1 md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">Photo / File Attachment</label>
+                <div className="flex flex-col gap-3">
+                  {formData.imageUrl && (
+                    <div className="relative inline-block border border-slate-200 rounded-lg overflow-hidden w-full max-w-sm">
+                      <img src={formData.imageUrl} alt="Defect Attachment" className="w-full h-auto object-cover" />
+                      <button type="button" onClick={() => setFormData(prev => ({...prev, imageUrl: ''}))} className="absolute top-2 right-2 p-1 bg-white/90 rounded-full shadow-sm text-slate-600 hover:text-red-500">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button type="button" onClick={handleTakePhoto} className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg transition-colors max-w-sm font-medium">
+                      <CameraIcon className="w-4 h-4" />
+                      {formData.imageUrl ? 'Retake Photo' : 'Capture Photo'}
+                    </button>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg transition-colors max-w-sm font-medium">
+                      <Upload className="w-4 h-4" />
+                      Upload File
+                    </button>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      ref={fileInputRef} 
+                      onChange={handleFileUpload} 
+                      className="hidden" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Comments</label>
                 <textarea name="comments" rows={2} value={formData.comments || ''} onChange={handleChange} placeholder="Add any comments or discussion..." className="w-full px-4 py-2 border border-slate-300 rounded-lg" />
               </div>
 
               {existingDefect && (
                 <>
-                  <div className="col-span-1 md:col-span-2 border-t border-slate-200 pt-6 mt-2">
-                    <h3 className="text-lg font-semibold text-slate-800 mb-4">Resolution & RCA</h3>
+                  <div className="col-span-1 md:col-span-2 border-t border-slate-200 pt-6 mt-2 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-slate-800">Resolution & RCA</h3>
+                    <button
+                      type="button"
+                      onClick={handleAnalyze}
+                      disabled={isAnalyzing}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
+                    </button>
                   </div>
                   <div className="col-span-1 md:col-span-2">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Root Cause Analysis (RCA)</label>
@@ -278,15 +429,74 @@ export const DefectFormModal = ({ existingDefect, onClose }: DefectFormModalProp
           </form>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 shrink-0">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition-colors">
-            Cancel
-          </button>
-          <button type="submit" form="defect-form" className="px-6 py-2 bg-indigo-600 text-white font-medium hover:bg-indigo-700 rounded-lg shadow-sm transition-colors">
-            {existingDefect ? 'Save Changes' : 'Create Defect'}
-          </button>
+        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-4 text-sm">
+            {existingDefect && (
+              <button 
+                type="button" 
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            )}
+            {existingDefect && saveStatus === 'saving' && (
+              <span className="text-slate-500 font-medium animate-pulse flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"></span>
+                Saving...
+              </span>
+            )}
+            {existingDefect && saveStatus === 'saved' && (
+              <span className="text-green-600 font-medium flex items-center gap-1">
+                <Check className="w-4 h-4"/> Saved to Google Sheets
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-200 rounded-lg transition-colors">
+              {existingDefect ? 'Close' : 'Cancel'}
+            </button>
+            {!existingDefect && (
+              <button type="submit" form="defect-form" className="px-6 py-2 bg-indigo-600 text-white font-medium hover:bg-indigo-700 rounded-lg shadow-sm transition-colors">
+                Create Defect
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 text-red-600 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">Delete Defect</h3>
+            </div>
+            <p className="text-slate-600 text-sm mb-6">
+              Are you sure you want to delete this defect? This action cannot be undone and will permanently remove the defect from the registry.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                type="button" 
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 text-white font-medium hover:bg-red-700 rounded-lg shadow-sm transition-colors"
+              >
+                Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

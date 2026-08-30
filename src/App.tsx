@@ -3,18 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { Login } from './components/Login';
 import { DashboardView } from './components/DashboardView';
 import { KanbanBoard } from './components/KanbanBoard';
 import { TableView } from './components/TableView';
 import { DefectFormModal } from './components/DefectFormModal';
+import { ActivityLogsView } from './components/ActivityLogsView';
+import { SettingsModal } from './components/SettingsModal';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { exportToExcel } from './lib/export';
 import { fetchSheetData, updateSheetValues, defectsToRows, rowsToDefects, ensureDefectsSheetExists } from './lib/googleSheets';
 import { Defect, AuditEvent } from './types';
-import { Plus } from 'lucide-react';
+import { Plus, Download, Upload } from 'lucide-react';
+import Papa from 'papaparse';
 
 const AppContent = () => {
   const { isAuthenticated, spreadsheetId, defects, setDefects, auditTrail } = useAppContext();
@@ -24,6 +27,9 @@ const AppContent = () => {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [selectedDefect, setSelectedDefect] = useState<Defect | undefined>(undefined);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initial sync when token and spreadsheet are available
   useEffect(() => {
@@ -54,6 +60,46 @@ const AppContent = () => {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const template = [
+      ['ID', 'Title', 'Description', 'Project', 'Module', 'Priority', 'Severity', 'Status', 'Assignee', 'Reporter', 'Reported Version', 'Target Fix Version', 'Reproduction Steps', 'Expected Behavior', 'Actual Behavior', 'Root Cause Analysis', 'Resolution Notes', 'Comments', 'Image URL', 'Created At', 'Updated At'],
+      ['DEF-123456', 'Sample Defect', 'Description here', 'Project A', 'UI', 'Medium', 'Minor', 'Open', 'John Doe', 'Jane Doe', 'v1.0.0', 'v1.0.1', '1. Go to X', 'Expect Y', 'Got Z', '', '', '', '', new Date().toISOString(), new Date().toISOString()]
+    ];
+    const csv = Papa.unparse(template);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'defect_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    Papa.parse(file, {
+      complete: (results) => {
+        if (results.data && results.data.length > 1) {
+          const importedDefects = rowsToDefects(results.data as any[][]);
+          const newDefects = [...defects];
+          importedDefects.forEach(d => {
+            if (d.id && !newDefects.find(ex => ex.id === d.id)) {
+              newDefects.push(d);
+            }
+          });
+          setDefects(newDefects);
+          if (token && spreadsheetId) {
+            handleSync(token, spreadsheetId);
+          }
+        }
+      }
+    });
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   if (!isAuthenticated) {
     return <Login onLoginSuccess={setToken} />;
   }
@@ -62,7 +108,8 @@ const AppContent = () => {
     switch (activeView) {
       case 'kanban': return <KanbanBoard onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
       case 'table': return <TableView onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
-      case 'dashboard': return <DashboardView />;
+      case 'dashboard': return <DashboardView token={token} />;
+      case 'activity': return <ActivityLogsView />;
       default: return <KanbanBoard onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
     }
   };
@@ -73,6 +120,7 @@ const AppContent = () => {
       setActiveView={setActiveView} 
       onSync={() => { if (token && spreadsheetId) handleSync(token, spreadsheetId); }}
       onExportExcel={() => exportToExcel(defects, auditTrail)}
+      onOpenSettings={() => setIsSettingsOpen(true)}
       isSyncing={isSyncing}
     >
       {syncError && (
@@ -81,14 +129,35 @@ const AppContent = () => {
           <button onClick={() => setSyncError(null)} className="text-red-500 hover:text-red-700 text-lg">&times;</button>
         </div>
       )}
-      <div className="flex items-center justify-between shrink-0">
+      <div className="flex items-center justify-between shrink-0 flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">
-            {activeView === 'kanban' ? 'Kanban Board' : activeView === 'table' ? 'Issues Registry' : 'Project Health Overview'}
+            {activeView === 'kanban' ? 'Kanban Board' : activeView === 'table' ? 'Issues Registry' : activeView === 'activity' ? 'Activity Logs' : 'Project Health Overview'}
           </h2>
           <p className="text-sm text-slate-500">Monitoring defects across all enterprise platforms</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <input 
+            type="file" 
+            accept=".csv" 
+            ref={fileInputRef} 
+            onChange={handleImportCSV} 
+            className="hidden" 
+          />
+          <button
+            onClick={handleDownloadTemplate}
+            className="px-3 py-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Template
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-3 py-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Import CSV
+          </button>
           <button
             onClick={() => exportToExcel(defects, auditTrail)}
             className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
@@ -111,7 +180,12 @@ const AppContent = () => {
         <DefectFormModal 
           existingDefect={selectedDefect} 
           onClose={() => { setIsFormOpen(false); setSelectedDefect(undefined); }} 
+          onAutoSave={() => { if (token && spreadsheetId) handleSync(token, spreadsheetId); }}
+          token={token}
         />
+      )}
+      {isSettingsOpen && (
+        <SettingsModal onClose={() => setIsSettingsOpen(false)} />
       )}
     </Layout>
   );

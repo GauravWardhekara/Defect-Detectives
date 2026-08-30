@@ -1,6 +1,6 @@
 {
   "name": "Defect Tracker",
   "description": "A comprehensive defect tracking application with Google Sheets synchronization, Kanban board, Table view, and QA metrics dashboard.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

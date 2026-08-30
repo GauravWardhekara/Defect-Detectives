@@ -1,13 +1,46 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAppContext } from '../context/AppContext';
 import { Status, Priority, Severity } from '../types';
-import { ShieldAlert, CheckCircle2, AlertTriangle, Activity } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, AlertTriangle, Activity, Sparkles, Loader2 } from 'lucide-react';
 
 const COLORS = ['#6366f1', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
 
-export const DashboardView = () => {
-  const { defects } = useAppContext();
+export const DashboardView = ({ token }: { token?: string | null }) => {
+  const { filteredDefects: defects } = useAppContext();
+  const [insights, setInsights] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateInsights = async () => {
+    if (!token) {
+      alert("Please sign in with Google to use the AI insights feature.");
+      return;
+    }
+    
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/insights', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ defects })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate insights');
+      }
+      
+      const data = await response.json();
+      setInsights(data.insights);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to generate insights. Please check your connection.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Metrics
   const total = defects.length;
@@ -31,6 +64,33 @@ export const DashboardView = () => {
 
   return (
     <div className="space-y-6">
+      {/* AI Insights Section */}
+      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-indigo-600" />
+              AI Defect Insights
+            </h3>
+            <p className="text-sm text-indigo-700 mt-1">Generate an automated summary of current project risks, trends, and root causes.</p>
+          </div>
+          <button 
+            onClick={generateInsights}
+            disabled={isGenerating || defects.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 shrink-0"
+          >
+            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {isGenerating ? 'Analyzing Data...' : 'Generate Insights'}
+          </button>
+        </div>
+        
+        {insights && (
+          <div className="mt-4 p-5 bg-white rounded-lg border border-indigo-50 shadow-sm text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
+            {insights}
+          </div>
+        )}
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Columns, Table as TableIcon, FileSpreadsheet, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Columns, Table as TableIcon, FileSpreadsheet, Settings, LogOut, Search, Filter } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { Status } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,16 +9,18 @@ interface LayoutProps {
   setActiveView: (view: string) => void;
   onSync: () => void;
   onExportExcel: () => void;
+  onOpenSettings: () => void;
   isSyncing?: boolean;
 }
 
-export const Layout = ({ children, activeView, setActiveView, onSync, onExportExcel, isSyncing }: LayoutProps) => {
-  const { currentUser, isAuthenticated, spreadsheetId } = useAppContext();
+export const Layout = ({ children, activeView, setActiveView, onSync, onExportExcel, onOpenSettings, isSyncing }: LayoutProps) => {
+  const { currentUser, isAuthenticated, spreadsheetId, projects, searchQuery, setSearchQuery, filterProject, setFilterProject, filterStatus, setFilterStatus } = useAppContext();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'table', label: 'Issues Registry', icon: TableIcon },
     { id: 'kanban', label: 'Kanban Board', icon: Columns },
+    { id: 'activity', label: 'Activity Logs', icon: FileSpreadsheet },
   ];
 
   return (
@@ -89,6 +92,15 @@ export const Layout = ({ children, activeView, setActiveView, onSync, onExportEx
               <div className="w-5 h-5 bg-green-500 rounded flex items-center justify-center text-[10px] text-white font-bold shrink-0">GS</div>
               <span className="font-medium text-sm text-left">{isSyncing ? 'Syncing Now...' : 'Force Sync Sheet'}</span>
             </button>
+            <button
+              onClick={onOpenSettings}
+              className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:bg-slate-800 rounded-lg transition-colors mt-2"
+            >
+              <div className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center text-slate-300 shrink-0">
+                <Settings className="w-3.5 h-3.5" />
+              </div>
+              <span className="font-medium text-sm text-left">App Settings</span>
+            </button>
           </nav>
           
           <div className="p-4 bg-slate-800/50 mt-auto">
@@ -101,6 +113,48 @@ export const Layout = ({ children, activeView, setActiveView, onSync, onExportEx
         </aside>
 
         <main className="flex-1 flex flex-col p-6 space-y-6 overflow-hidden">
+          {isAuthenticated && (
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-center shrink-0">
+              <div className="relative flex-1 min-w-[200px]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search defects by title, ID, or description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center text-sm font-medium text-slate-500 gap-2">
+                  <Filter className="w-4 h-4" /> Filters:
+                </div>
+                <select
+                  value={filterProject}
+                  onChange={(e) => setFilterProject(e.target.value)}
+                  className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                >
+                  <option value="All">All Projects</option>
+                  {projects.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                >
+                  <option value="All">All Statuses</option>
+                  {Object.values(Status).map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          
           {children}
           
           <footer className="h-8 bg-slate-50 border-t border-slate-200 flex items-center px-6 justify-between shrink-0 text-[10px] text-slate-400 font-medium uppercase tracking-widest -mx-6 -mb-6 mt-6">

@@ -155,20 +155,26 @@ export const defectsToRows = (defects: Defect[]): any[][] => {
     'ID', 'Title', 'Description', 'Project', 'Module', 'Priority', 'Severity', 'Status',
     'Assignee', 'Reporter', 'Reported Version', 'Target Fix Version',
     'Reproduction Steps', 'Expected Behavior', 'Actual Behavior',
-    'Root Cause Analysis', 'Resolution Notes', 'Comments', 'Created At', 'Updated At'
+    'Root Cause Analysis', 'Resolution Notes', 'Comments', 'Image URL', 'Created At', 'Updated At'
   ];
   const rows = defects.map(d => [
     d.id, d.title, d.description, d.project, d.module || '', d.priority, d.severity, d.status,
     d.assignee, d.reporter, d.reportedVersion, d.targetFixVersion,
     d.reproductionSteps, d.expectedBehavior, d.actualBehavior,
-    d.rootCauseAnalysis || '', d.resolutionNotes || '', d.comments || '', d.createdAt, d.updatedAt
+    d.rootCauseAnalysis || '', d.resolutionNotes || '', d.comments || '', d.imageUrl || '', d.createdAt, d.updatedAt
   ]);
-  return [headers, ...rows];
+  
+  // Pad with empty rows to overwrite any deleted rows in the sheet
+  const emptyRow = Array(21).fill('');
+  const paddedRows = [...rows];
+  for (let i = 0; i < 50; i++) paddedRows.push(emptyRow);
+
+  return [headers, ...paddedRows];
 };
 
 export const rowsToDefects = (rows: any[][]): Defect[] => {
   if (!rows || rows.length <= 1) return [];
-  return rows.slice(1).map(r => ({
+  return rows.slice(1).filter(r => r[0]).map(r => ({
     id: r[0] || '',
     title: r[1] || '',
     description: r[2] || '',
@@ -187,7 +193,8 @@ export const rowsToDefects = (rows: any[][]): Defect[] => {
     rootCauseAnalysis: r[15] || '',
     resolutionNotes: r[16] || '',
     comments: r[17] || '',
-    createdAt: r[18] || '',
-    updatedAt: r[19] || ''
+    imageUrl: r[18] || '',
+    createdAt: r[19] || '',
+    updatedAt: r[20] || ''
   }));
 };

@@ -14,7 +14,7 @@ const KANBAN_COLUMNS = [
 ];
 
 export const KanbanBoard = ({ onRowClick }: { onRowClick: (defect: Defect) => void }) => {
-  const { defects, updateDefect } = useAppContext();
+  const { filteredDefects: defects, updateDefect } = useAppContext();
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;

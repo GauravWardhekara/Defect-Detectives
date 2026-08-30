@@ -1,0 +1,6 @@
+{
+	"appId": "com.defecttracker.app",
+	"appName": "Defect Tracker",
+	"webDir": "dist",
+	"bundledWebRuntime": false
+}

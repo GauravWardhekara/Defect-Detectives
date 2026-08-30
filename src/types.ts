@@ -40,6 +40,7 @@ export interface Defect {
   rootCauseAnalysis?: string;
   resolutionNotes?: string;
   comments?: string;
+  imageUrl?: string;
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
 }
