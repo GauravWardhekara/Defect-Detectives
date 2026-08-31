@@ -1,6 +1,5 @@
 {
-	"appId": "com.defecttracker.app",
-	"appName": "Defect Tracker",
-	"webDir": "dist",
-	"bundledWebRuntime": false
+	"appId": "com.defectdetective.app",
+	"appName": "Defect Detective",
+	"webDir": "dist"
 }

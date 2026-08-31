@@ -1,7 +1,8 @@
 {
-	"appId": "com.defecttracker.app",
-	"appName": "Defect Tracker",
+	"appId": "com.defectdetective.app",
+	"appName": "Defect Detective",
 	"webDir": "dist",
-	"bundledWebRuntime": false,
-	"packageClassList": []
+	"packageClassList": [
+		"CAPCameraPlugin"
+	]
 }
