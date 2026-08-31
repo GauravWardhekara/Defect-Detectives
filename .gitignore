@@ -9,3 +9,9 @@ coverage/
 
 resources/ios/**/*
 resources/android/**/*
+dist-electron/
+dist-electron/latest.yml
+dist-electron/Defect Tracker Setup 0.0.0.exe.blockmap
+dist-electron/Defect Tracker Setup 0.0.0.exe
+dist-electron/latest.yml
+dist-electron/Defect Tracker Setup 0.0.0.exe.blockmap
