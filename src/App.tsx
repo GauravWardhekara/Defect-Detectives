@@ -3,68 +3,43 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Layout } from './components/Layout';
-import { Login } from './components/Login';
+import { NetworkConnect } from './components/Login';
 import { DashboardView } from './components/DashboardView';
 import { KanbanBoard } from './components/KanbanBoard';
 import { TableView } from './components/TableView';
 import { DefectFormModal } from './components/DefectFormModal';
 import { ActivityLogsView } from './components/ActivityLogsView';
 import { SettingsModal } from './components/SettingsModal';
+import { ProfileModal } from './components/ProfileModal';
 import { Chatbot } from './components/Chatbot';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { exportToExcel } from './lib/export';
-import { fetchSheetData, updateSheetValues, defectsToRows, rowsToDefects, ensureDefectsSheetExists } from './lib/googleSheets';
-import { Defect, AuditEvent } from './types';
+import { rowsToDefects } from './lib/googleSheets'; // Keep for parsing logic, or we can use Papa parse directly
+import { Defect } from './types';
 import { Plus, Download, Upload } from 'lucide-react';
 import Papa from 'papaparse';
 
 const AppContent = () => {
-  const { isAuthenticated, spreadsheetId, defects, setDefects, auditTrail, setSpreadsheetTitle } = useAppContext();
-  const [token, setToken] = useState<string | null>(null);
+  const { defects, setDefects, auditTrail, networkConfig, socket, authStatus } = useAppContext();
   const [activeView, setActiveView] = useState('dashboard');
-  const [isConnectModalOpen, setIsConnectModalOpen] = useState(!isAuthenticated);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(true);
   const [selectedDefect, setSelectedDefect] = useState<Defect | undefined>(undefined);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initial sync when token and spreadsheet are available
   useEffect(() => {
-    if (token && spreadsheetId && isAuthenticated) {
-      handleSync(token, spreadsheetId);
+    // Auto-close network modal once connected and authenticated
+    if (networkConfig && socket && (networkConfig.isMaster || authStatus === 'success')) {
+      setTimeout(() => {
+        setIsConnectModalOpen(false);
+      }, 3000);
     }
-  }, [token, spreadsheetId, isAuthenticated]);
-
-  const handleSync = async (currentToken: string, currentSheetId: string) => {
-    setIsSyncing(true);
-    setSyncError(null);
-    try {
-      const title = await ensureDefectsSheetExists(currentToken, currentSheetId);
-      if (title) setSpreadsheetTitle(title);
-      
-      const data = await fetchSheetData(currentToken, currentSheetId, 'Defects!A1:Z');
-      const fetchedDefects = rowsToDefects(data.values || []);
-      
-      if (defects.length === 0 && fetchedDefects.length > 0) {
-        setDefects(fetchedDefects);
-      } else if (defects.length > 0) {
-        const rows = defectsToRows(defects);
-        await updateSheetValues(currentToken, currentSheetId, 'Defects!A1:Z', rows);
-      }
-      setLastSynced(new Date());
-    } catch (error: any) {
-      console.error("Sync failed", error);
-      setSyncError(error.message || 'Unknown error occurred during sync');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  }, [networkConfig, socket, authStatus]);
 
   const handleDownloadTemplate = () => {
     const template = [
@@ -88,17 +63,44 @@ const AppContent = () => {
     Papa.parse(file, {
       complete: (results) => {
         if (results.data && results.data.length > 1) {
-          const importedDefects = rowsToDefects(results.data as any[][]);
-          const newDefects = [...defects];
+          // Quick manual parsing to match our format
+          const rows = results.data as any[][];
+          const importedDefects: Defect[] = [];
+          
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row[0] || !row[1]) continue; // Skip invalid rows
+            
+            importedDefects.push({
+              id: row[0],
+              title: row[1],
+              description: row[2] || '',
+              project: row[3] || 'General',
+              module: row[4] || '',
+              priority: row[5] || 'Medium',
+              severity: row[6] || 'Minor',
+              status: row[7] || 'Open',
+              assignee: row[8] || 'Unassigned',
+              reporter: row[9] || 'Unknown',
+              reportedVersion: row[10] || '',
+              targetFixVersion: row[11] || '',
+              reproductionSteps: row[12] || '',
+              expectedBehavior: row[13] || '',
+              actualBehavior: row[14] || '',
+              rootCauseAnalysis: row[15] || '',
+              resolutionNotes: row[16] || '',
+              comments: row[17] || '',
+              imageUrl: row[18] || '',
+              createdAt: row[19] || new Date().toISOString(),
+              updatedAt: row[20] || new Date().toISOString(),
+            } as Defect);
+          }
+
           importedDefects.forEach(d => {
-            if (d.id && !newDefects.find(ex => ex.id === d.id)) {
-              newDefects.push(d);
+            if (socket) {
+              socket.emit('add_defect', d);
             }
           });
-          setDefects(newDefects);
-          if (token && spreadsheetId) {
-            handleSync(token, spreadsheetId);
-          }
         }
       }
     });
@@ -110,7 +112,7 @@ const AppContent = () => {
     switch (activeView) {
       case 'kanban': return <KanbanBoard onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
       case 'table': return <TableView onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
-      case 'dashboard': return <DashboardView token={token} />;
+      case 'dashboard': return <DashboardView />;
       case 'activity': return <ActivityLogsView />;
       default: return <KanbanBoard onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
     }
@@ -120,19 +122,14 @@ const AppContent = () => {
     <Layout 
       activeView={activeView} 
       setActiveView={setActiveView} 
-      onSync={() => { if (token && spreadsheetId) handleSync(token, spreadsheetId); }}
+      onSync={() => {}}
       onExportExcel={() => exportToExcel(defects, auditTrail)}
       onOpenSettings={() => setIsSettingsOpen(true)}
       onOpenConnectModal={() => setIsConnectModalOpen(true)}
-      isSyncing={isSyncing}
-      lastSynced={lastSynced}
+      onOpenProfileModal={() => setIsProfileOpen(true)}
+      isSyncing={false}
+      lastSynced={new Date()}
     >
-      {syncError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between shrink-0 mb-2">
-          <span><strong>Sync Error:</strong> {syncError}</span>
-          <button onClick={() => setSyncError(null)} className="text-red-500 hover:text-red-700 text-lg">&times;</button>
-        </div>
-      )}
       <div className="flex items-center justify-between shrink-0 flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">
@@ -184,32 +181,32 @@ const AppContent = () => {
         <DefectFormModal 
           existingDefect={selectedDefect} 
           onClose={() => { setIsFormOpen(false); setSelectedDefect(undefined); }} 
-          onAutoSave={() => { if (token && spreadsheetId) handleSync(token, spreadsheetId); }}
-          token={token}
         />
       )}
       {isSettingsOpen && (
         <SettingsModal onClose={() => setIsSettingsOpen(false)} />
+      )}
+      {isProfileOpen && (
+        <ProfileModal onClose={() => setIsProfileOpen(false)} />
       )}
       
       {isConnectModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="relative w-full max-w-md">
             {/* Close button */}
-            <button 
-              onClick={() => setIsConnectModalOpen(false)}
-              className="absolute -top-4 -right-4 w-8 h-8 bg-white text-slate-500 hover:text-slate-900 rounded-full shadow-lg flex items-center justify-center transition-colors z-10"
-            >
-              &times;
-            </button>
-            <Login onLoginSuccess={(t) => { 
-              setToken(t); 
-              setIsConnectModalOpen(false); 
-            }} />
+            {networkConfig && socket && (
+              <button 
+                onClick={() => setIsConnectModalOpen(false)}
+                className="absolute -top-4 -right-4 w-8 h-8 bg-white text-slate-500 hover:text-slate-900 rounded-full shadow-lg flex items-center justify-center transition-colors z-10"
+              >
+                &times;
+              </button>
+            )}
+            <NetworkConnect />
           </div>
         </div>
       )}
-      <Chatbot token={token} />
+      <Chatbot />
     </Layout>
   );
 };

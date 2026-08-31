@@ -6,8 +6,8 @@ import { ShieldAlert, CheckCircle2, AlertTriangle, Activity, Sparkles, Loader2 }
 
 const COLORS = ['#6366f1', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
 
-export const DashboardView = ({ token }: { token?: string | null }) => {
-  const { filteredDefects: defects } = useAppContext();
+export const DashboardView = () => {
+  const { filteredDefects: defects, networkConfig } = useAppContext();
   const [insights, setInsights] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -17,11 +17,9 @@ export const DashboardView = ({ token }: { token?: string | null }) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
       
-      const response = await fetch('/api/insights', {
+      const baseUrl = networkConfig?.masterUrl && !networkConfig.isMaster ? networkConfig.masterUrl : '';
+      const response = await fetch(`${baseUrl}/api/insights`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ defects })

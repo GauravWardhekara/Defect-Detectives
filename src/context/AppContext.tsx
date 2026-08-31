@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { AppState, Defect, AuditEvent, User } from '../types';
 import Papa from 'papaparse';
 import { defaultCsvData } from '../data/defaultCsv';
-import { rowsToDefects } from '../lib/googleSheets';
+import { io, Socket } from 'socket.io-client';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AppContextType extends AppState {
   setDefects: (defects: Defect[]) => void;
@@ -12,9 +13,8 @@ interface AppContextType extends AppState {
   setAuditTrail: (trail: AuditEvent[]) => void;
   addAuditEvent: (event: AuditEvent) => void;
   setCurrentUser: (user: User | null) => void;
-  setSpreadsheetId: (id: string | null) => void;
-  setSpreadsheetTitle: (title: string | null) => void;
-  setIsAuthenticated: (auth: boolean) => void;
+  saveProfile: (name: string, department: string) => void;
+  importProfile: (user: User) => void;
   addUser: (user: User) => void;
   addProject: (project: string) => void;
   searchQuery: string;
@@ -27,27 +27,22 @@ interface AppContextType extends AppState {
   geminiApiKey: string | null;
   setGeminiApiKey: (key: string | null) => void;
   filteredDefects: Defect[];
+  
+  // Network Config
+  networkConfig: { isMaster: boolean, masterUrl: string | null, orgCode?: string, inviteCode?: string } | null;
+  socket: Socket | null;
+  authStatus: 'pending' | 'success' | 'required' | 'failed';
+  joinOrg: (code: string) => void;
 }
 
-const parsedCsv = Papa.parse(defaultCsvData).data as any[][];
-const defaultDefectsData = rowsToDefects(parsedCsv);
+const defaultDefectsData: Defect[] = [];
 
 const defaultState: AppState = {
   defects: defaultDefectsData,
   auditTrail: [],
-  users: [
-    { id: '1', name: 'Alice Engineer', email: 'alice@example.com', department: 'Engineering' },
-    { id: '2', name: 'Bob QA', email: 'bob@example.com', department: 'Quality Assurance' },
-    { id: '3', name: 'Charlie Dev', email: 'charlie@example.com', department: 'Engineering' },
-    { id: '4', name: 'Diana UX', email: 'diana@example.com', department: 'Design' },
-    { id: '5', name: 'Evan DevOps', email: 'evan@example.com', department: 'Operations' },
-    { id: '6', name: 'Fiona PM', email: 'fiona@example.com', department: 'Product' }
-  ],
+  users: [],
   projects: ['E-Commerce Web Portal', 'Mobile iOS & Android', 'Payment Gateway', 'Inventory ERP', 'Customer Support Dashboard', 'Analytics Pipeline', 'Marketing Site'],
   currentUser: null,
-  spreadsheetId: null,
-  spreadsheetTitle: null,
-  isAuthenticated: false
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -58,14 +53,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>(defaultState.users);
   const [projects, setProjects] = useState<string[]>(defaultState.projects);
   const [currentUser, setCurrentUser] = useState<User | null>(defaultState.currentUser);
-  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(defaultState.spreadsheetId);
-  const [spreadsheetTitle, setSpreadsheetTitle] = useState<string | null>(defaultState.spreadsheetTitle);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(defaultState.isAuthenticated);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterProject, setFilterProject] = useState<string | 'All'>('All');
   const [filterStatus, setFilterStatus] = useState<string | 'All'>('All');
   const [geminiApiKey, setGeminiApiKeyState] = useState<string | null>(null);
+
+  const [networkConfig, setNetworkConfig] = useState<{isMaster: boolean, masterUrl: string | null, orgCode?: string, inviteCode?: string} | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [authStatus, setAuthStatus] = useState<'pending' | 'success' | 'required' | 'failed'>('pending');
 
   const setGeminiApiKey = (key: string | null) => {
     setGeminiApiKeyState(key);
@@ -73,24 +69,143 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     else localStorage.removeItem('defect_tracker_gemini_api_key');
   };
 
-  // Load from local storage initially
+  const saveProfile = (name: string, department: string) => {
+    let profileToSave = currentUser;
+    if (!profileToSave) {
+      profileToSave = { id: uuidv4(), name, email: `${name.replace(/\s+/g, '').toLowerCase()}@local`, department };
+    } else {
+      profileToSave = { ...profileToSave, name, department };
+    }
+    localStorage.setItem('defect_diary_profile', JSON.stringify(profileToSave));
+    setCurrentUser(profileToSave);
+    
+    // Automatically trigger download on new profile creation or update
+    import('../lib/profile').then(({ generateProfileCard }) => {
+      generateProfileCard(profileToSave);
+    });
+  };
+
+  const importProfile = (user: User) => {
+    localStorage.setItem('defect_diary_profile', JSON.stringify(user));
+    setCurrentUser(user);
+  };
+
   useEffect(() => {
-    const savedSheetId = localStorage.getItem('defect_tracker_sheet_id');
-    if (savedSheetId) {
-      setSpreadsheetId(savedSheetId);
-    }
-    const savedSheetTitle = localStorage.getItem('defect_tracker_sheet_title');
-    if (savedSheetTitle) {
-      setSpreadsheetTitle(savedSheetTitle);
-    }
     const savedApiKey = localStorage.getItem('defect_tracker_gemini_api_key');
     if (savedApiKey) {
       setGeminiApiKeyState(savedApiKey);
     }
-  }, []);
+
+    const savedProfile = localStorage.getItem('defect_diary_profile');
+    let loadedProfile: User | null = null;
+    if (savedProfile) {
+      loadedProfile = JSON.parse(savedProfile);
+      setCurrentUser(loadedProfile);
+    }
+    
+    // Fetch LAN config on boot
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => {
+        setNetworkConfig(data);
+        if (data.masterUrl && loadedProfile) {
+          const s = io(data.masterUrl);
+          
+          s.on("connect", () => {
+            s.emit("auth", loadedProfile);
+          });
+
+          s.on("auth_success", (res: { orgCode: string, users: User[], defects: Defect[] }) => {
+            setAuthStatus('success');
+            setUsers(res.users);
+            setDefects(res.defects);
+            setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode } : null);
+          });
+
+          s.on("auth_required", () => {
+            setAuthStatus('required');
+          });
+
+          s.on("auth_failed", (err) => {
+            setAuthStatus('failed');
+            alert(`Authentication failed: ${err}`);
+          });
+
+          s.on("users_updated", (orgUsers: User[]) => {
+            setUsers(orgUsers);
+          });
+
+          s.on("sync", (syncedDefects: Defect[]) => {
+            setDefects(syncedDefects);
+          });
+
+          setSocket(s);
+        } else if (data.masterUrl && !loadedProfile) {
+          // If no profile yet, we just hold off on socket auth
+          setAuthStatus('required'); // They need to make profile first
+        }
+      })
+      .catch(err => {
+        console.error("Could not fetch network config:", err);
+      });
+      
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, []); // eslint-disable-line
+
+  useEffect(() => {
+    // If we just created a profile, and we have a masterUrl but no socket, we should connect.
+    if (networkConfig?.masterUrl && currentUser && !socket) {
+      const s = io(networkConfig.masterUrl);
+      
+      s.on("connect", () => {
+        s.emit("auth", currentUser);
+      });
+
+      s.on("auth_success", (res: { orgCode: string, users: User[], defects: Defect[] }) => {
+        setAuthStatus('success');
+        setUsers(res.users);
+        setDefects(res.defects);
+        setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode } : null);
+      });
+
+      s.on("auth_required", () => {
+        setAuthStatus('required');
+      });
+
+      s.on("auth_failed", (err) => {
+        setAuthStatus('failed');
+        alert(`Authentication failed: ${err}`);
+      });
+
+      s.on("users_updated", (orgUsers: User[]) => {
+        setUsers(orgUsers);
+      });
+
+      s.on("sync", (syncedDefects: Defect[]) => {
+        setDefects(syncedDefects);
+      });
+
+      setSocket(s);
+    }
+  }, [currentUser, networkConfig?.masterUrl, socket]);
+
+  useEffect(() => {
+    // If we have a socket but we just created a profile, trigger auth (if already connected but waiting)
+    if (socket && currentUser && authStatus === 'required' && networkConfig?.isMaster) {
+        socket.emit("auth", currentUser);
+    }
+  }, [currentUser, socket, networkConfig, authStatus]);
+
+  const joinOrg = (code: string) => {
+    if (socket && currentUser) {
+      socket.emit("join_org", { inviteCode: code, profile: currentUser });
+    }
+  };
 
   const addDefect = (defect: Defect) => {
-    setDefects(prev => [...prev, defect]);
+    if (socket) socket.emit("add_defect", defect);
     addAuditEvent({
       id: `audit-${Date.now()}`,
       defectId: defect.id,
@@ -102,7 +217,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const updateDefect = (defect: Defect) => {
-    setDefects(prev => prev.map(d => (d.id === defect.id ? defect : d)));
+    if (socket) socket.emit("update_defect", defect);
     addAuditEvent({
       id: `audit-${Date.now()}`,
       defectId: defect.id,
@@ -114,21 +229,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const bulkUpdateDefects = (ids: string[], updates: Partial<Defect>) => {
-    setDefects(prev => prev.map(d => ids.includes(d.id) ? { ...d, ...updates, updatedAt: new Date().toISOString() } : d));
     ids.forEach(id => {
-      addAuditEvent({
-        id: `audit-${Date.now()}-${id}`,
-        defectId: id,
-        timestamp: new Date().toISOString(),
-        user: currentUser?.name || 'System',
-        action: 'Bulk Updated',
-        details: `Bulk updated fields: ${Object.keys(updates).join(', ')}`
-      });
+      const defect = defects.find(d => d.id === id);
+      if (defect) {
+        if (socket) socket.emit("update_defect", { ...defect, ...updates, updatedAt: new Date().toISOString() });
+        addAuditEvent({
+          id: `audit-${Date.now()}-${id}`,
+          defectId: id,
+          timestamp: new Date().toISOString(),
+          user: currentUser?.name || 'System',
+          action: 'Bulk Updated',
+          details: `Bulk updated fields: ${Object.keys(updates).join(', ')}`
+        });
+      }
     });
   };
 
   const deleteDefect = (id: string) => {
-    setDefects(prev => prev.filter(d => d.id !== id));
+    if (socket) socket.emit("delete_defect", id);
     addAuditEvent({
       id: `audit-${Date.now()}-${id}`,
       defectId: id,
@@ -161,23 +279,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     auditTrail, setAuditTrail, addAuditEvent,
     users, addUser,
     projects, addProject,
-    currentUser, setCurrentUser,
-    spreadsheetId, setSpreadsheetId: (id: string | null) => {
-      setSpreadsheetId(id);
-      if (id) localStorage.setItem('defect_tracker_sheet_id', id);
-      else localStorage.removeItem('defect_tracker_sheet_id');
-    },
-    spreadsheetTitle, setSpreadsheetTitle: (title: string | null) => {
-      setSpreadsheetTitle(title);
-      if (title) localStorage.setItem('defect_tracker_sheet_title', title);
-      else localStorage.removeItem('defect_tracker_sheet_title');
-    },
-    isAuthenticated, setIsAuthenticated,
+    currentUser, setCurrentUser, saveProfile, importProfile,
     searchQuery, setSearchQuery,
     filterProject, setFilterProject,
     filterStatus, setFilterStatus,
     geminiApiKey, setGeminiApiKey,
-    filteredDefects
+    filteredDefects,
+    networkConfig,
+    socket,
+    authStatus, joinOrg
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

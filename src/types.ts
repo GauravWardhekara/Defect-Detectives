@@ -43,6 +43,7 @@ export interface Defect {
   imageUrl?: string;
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
+  orgCode?: string;
 }
 
 export interface AuditEvent {
@@ -69,7 +70,4 @@ export interface AppState {
   users: User[];
   projects: string[];
   currentUser: User | null;
-  spreadsheetId: string | null;
-  spreadsheetTitle: string | null;
-  isAuthenticated: boolean;
 }

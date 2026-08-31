@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
+import { useAppContext } from '../context/AppContext';
 
 interface Message {
   role: 'user' | 'model';
   text: string;
 }
 
-export const Chatbot = ({ token }: { token: string | null }) => {
+export const Chatbot = () => {
+  const { networkConfig } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: 'model', text: 'Hello! I am your AI assistant. How can I help you with your defects today?' }
@@ -36,11 +38,9 @@ export const Chatbot = ({ token }: { token: string | null }) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
       
-      const response = await fetch('/api/chat', {
+      const baseUrl = networkConfig?.masterUrl && !networkConfig.isMaster ? networkConfig.masterUrl : '';
+      const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -140,14 +140,14 @@ export const Chatbot = ({ token }: { token: string | null }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={token ? "Ask me anything..." : "Sign in to use chat"}
-            disabled={!token || isLoading}
+            placeholder={"Ask me anything..."}
+            disabled={isLoading}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-none max-h-32 min-h-[44px]"
             rows={input.split('\\n').length > 1 ? Math.min(input.split('\\n').length, 4) : 1}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || !token || isLoading}
+            disabled={!input.trim() || isLoading}
             className="absolute right-2 bottom-2 w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center disabled:opacity-50 disabled:bg-slate-300 hover:bg-indigo-700 transition-colors"
           >
             <Send className="w-4 h-4" />

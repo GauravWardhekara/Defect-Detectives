@@ -10,7 +10,6 @@ interface DefectFormModalProps {
   existingDefect?: Defect;
   onClose: () => void;
   onAutoSave?: () => void;
-  token?: string | null;
 }
 
 const STATUS_STAGES = [
@@ -22,8 +21,8 @@ const STATUS_STAGES = [
   Status.CLOSED,
 ];
 
-export const DefectFormModal = ({ existingDefect, onClose, onAutoSave, token }: DefectFormModalProps) => {
-  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser } = useAppContext();
+export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectFormModalProps) => {
+  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser, networkConfig } = useAppContext();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -62,7 +61,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave, token }: 
       priority: Priority.MEDIUM,
       severity: Severity.MINOR,
       status: Status.OPEN,
-      assignee: users[0].name,
+      assignee: users.length > 0 ? users[0].name : '',
       reportedVersion: '',
       targetFixVersion: '',
       reproductionSteps: '',
@@ -137,11 +136,9 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave, token }: 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
       
-      const response = await fetch('/api/analyze', {
+      const baseUrl = networkConfig?.masterUrl && !networkConfig.isMaster ? networkConfig.masterUrl : '';
+      const response = await fetch(`${baseUrl}/api/analyze`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
