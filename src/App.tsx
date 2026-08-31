@@ -12,6 +12,7 @@ import { TableView } from './components/TableView';
 import { DefectFormModal } from './components/DefectFormModal';
 import { ActivityLogsView } from './components/ActivityLogsView';
 import { SettingsModal } from './components/SettingsModal';
+import { Chatbot } from './components/Chatbot';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { exportToExcel } from './lib/export';
 import { fetchSheetData, updateSheetValues, defectsToRows, rowsToDefects, ensureDefectsSheetExists } from './lib/googleSheets';
@@ -25,6 +26,7 @@ const AppContent = () => {
   const [activeView, setActiveView] = useState('kanban');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [selectedDefect, setSelectedDefect] = useState<Defect | undefined>(undefined);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -52,6 +54,7 @@ const AppContent = () => {
         const rows = defectsToRows(defects);
         await updateSheetValues(currentToken, currentSheetId, 'Defects!A1:Z', rows);
       }
+      setLastSynced(new Date());
     } catch (error: any) {
       console.error("Sync failed", error);
       setSyncError(error.message || 'Unknown error occurred during sync');
@@ -122,6 +125,7 @@ const AppContent = () => {
       onExportExcel={() => exportToExcel(defects, auditTrail)}
       onOpenSettings={() => setIsSettingsOpen(true)}
       isSyncing={isSyncing}
+      lastSynced={lastSynced}
     >
       {syncError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between shrink-0 mb-2">
@@ -187,6 +191,7 @@ const AppContent = () => {
       {isSettingsOpen && (
         <SettingsModal onClose={() => setIsSettingsOpen(false)} />
       )}
+      <Chatbot token={token} />
     </Layout>
   );
 };

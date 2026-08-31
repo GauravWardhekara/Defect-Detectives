@@ -45,7 +45,7 @@ ${JSON.stringify(defects, null, 2)}`;
         contents: prompt
       });
 
-      res.json({ insights: response.text() });
+      res.json({ insights: response.text });
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Failed to generate insights" });
@@ -71,11 +71,37 @@ Provide the output in JSON format with "rootCauseAnalysis" and "resolutionNotes"
         }
       });
       
-      const result = JSON.parse(response.text() || "{}");
+      const result = JSON.parse(response.text || "{}");
       res.json(result);
     } catch (e) {
       console.error(e);
       res.status(500).json({ error: "Failed to analyze defect" });
+    }
+  });
+
+  app.post("/api/chat", authenticateToken, async (req, res) => {
+    try {
+      const { history, message, systemInstruction } = req.body;
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      const contents = history.map((msg: any) => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text }]
+      }));
+      contents.push({ role: 'user', parts: [{ text: message }] });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents,
+        config: {
+          systemInstruction,
+        }
+      });
+      
+      res.json({ text: response.text });
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "Failed to generate chat response" });
     }
   });
 

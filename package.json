@@ -47,6 +47,7 @@
     "papaparse": "^5.7.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.10.1",
     "uuid": "^14.0.2",
     "xlsx": "^0.18.5"

@@ -11,9 +11,10 @@ interface LayoutProps {
   onExportExcel: () => void;
   onOpenSettings: () => void;
   isSyncing?: boolean;
+  lastSynced?: Date | null;
 }
 
-export const Layout = ({ children, activeView, setActiveView, onSync, onExportExcel, onOpenSettings, isSyncing }: LayoutProps) => {
+export const Layout = ({ children, activeView, setActiveView, onSync, onExportExcel, onOpenSettings, isSyncing, lastSynced }: LayoutProps) => {
   const { currentUser, isAuthenticated, spreadsheetId, projects, searchQuery, setSearchQuery, filterProject, setFilterProject, filterStatus, setFilterStatus } = useAppContext();
 
   const navItems = [
@@ -35,6 +36,11 @@ export const Layout = ({ children, activeView, setActiveView, onSync, onExportEx
           </h1>
         </div>
         <div className="flex items-center gap-6">
+          {lastSynced && (
+            <span className="text-xs text-slate-500 hidden sm:inline-block">
+              Last synced: {lastSynced.toLocaleTimeString()}
+            </span>
+          )}
           {spreadsheetId && (
             <a 
               href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}`}

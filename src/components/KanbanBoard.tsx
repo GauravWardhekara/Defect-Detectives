@@ -58,9 +58,10 @@ export const KanbanBoard = ({ onRowClick }: { onRowClick: (defect: Defect) => vo
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
+                            style={provided.draggableProps.style}
                             onClick={() => onRowClick(defect)}
-                            className={`p-4 mb-3 bg-white rounded-lg border shadow-sm cursor-pointer transition-shadow ${
-                              snapshot.isDragging ? 'shadow-lg border-indigo-300 rotate-2' : 'border-slate-200 hover:border-indigo-300'
+                            className={`p-4 mb-3 bg-white rounded-lg border shadow-sm cursor-pointer transition-shadow transition-colors duration-200 ${
+                              snapshot.isDragging ? 'shadow-lg border-indigo-400' : 'border-slate-200 hover:border-indigo-300'
                             }`}
                           >
                             <div className="flex justify-between items-start mb-2">
