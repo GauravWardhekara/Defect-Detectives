@@ -1,4 +1,4 @@
-package com.defecttracker.app;
+package com.defectdetective.app;
 
 import com.getcapacitor.BridgeActivity;
 

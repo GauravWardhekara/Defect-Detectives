@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.defecttracker.app',
-  appName: 'Defect Tracker',
+  appId: 'com.defectdetective.app',
+  appName: 'Defect Detective',
   webDir: 'dist',
   bundledWebRuntime: false
 };
