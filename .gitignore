@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+resources/ios/**/*
+resources/android/**/*
