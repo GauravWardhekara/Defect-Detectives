@@ -70,5 +70,6 @@ export interface AppState {
   projects: string[];
   currentUser: User | null;
   spreadsheetId: string | null;
+  spreadsheetTitle: string | null;
   isAuthenticated: boolean;
 }

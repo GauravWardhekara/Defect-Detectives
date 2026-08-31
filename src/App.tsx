@@ -21,9 +21,10 @@ import { Plus, Download, Upload } from 'lucide-react';
 import Papa from 'papaparse';
 
 const AppContent = () => {
-  const { isAuthenticated, spreadsheetId, defects, setDefects, auditTrail } = useAppContext();
+  const { isAuthenticated, spreadsheetId, defects, setDefects, auditTrail, setSpreadsheetTitle } = useAppContext();
   const [token, setToken] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState('kanban');
+  const [activeView, setActiveView] = useState('dashboard');
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(!isAuthenticated);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
@@ -44,7 +45,9 @@ const AppContent = () => {
     setIsSyncing(true);
     setSyncError(null);
     try {
-      await ensureDefectsSheetExists(currentToken, currentSheetId);
+      const title = await ensureDefectsSheetExists(currentToken, currentSheetId);
+      if (title) setSpreadsheetTitle(title);
+      
       const data = await fetchSheetData(currentToken, currentSheetId, 'Defects!A1:Z');
       const fetchedDefects = rowsToDefects(data.values || []);
       
@@ -103,10 +106,6 @@ const AppContent = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  if (!isAuthenticated) {
-    return <Login onLoginSuccess={setToken} />;
-  }
-
   const renderView = () => {
     switch (activeView) {
       case 'kanban': return <KanbanBoard onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
@@ -124,6 +123,7 @@ const AppContent = () => {
       onSync={() => { if (token && spreadsheetId) handleSync(token, spreadsheetId); }}
       onExportExcel={() => exportToExcel(defects, auditTrail)}
       onOpenSettings={() => setIsSettingsOpen(true)}
+      onOpenConnectModal={() => setIsConnectModalOpen(true)}
       isSyncing={isSyncing}
       lastSynced={lastSynced}
     >
@@ -190,6 +190,24 @@ const AppContent = () => {
       )}
       {isSettingsOpen && (
         <SettingsModal onClose={() => setIsSettingsOpen(false)} />
+      )}
+      
+      {isConnectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md">
+            {/* Close button */}
+            <button 
+              onClick={() => setIsConnectModalOpen(false)}
+              className="absolute -top-4 -right-4 w-8 h-8 bg-white text-slate-500 hover:text-slate-900 rounded-full shadow-lg flex items-center justify-center transition-colors z-10"
+            >
+              &times;
+            </button>
+            <Login onLoginSuccess={(t) => { 
+              setToken(t); 
+              setIsConnectModalOpen(false); 
+            }} />
+          </div>
+        </div>
       )}
       <Chatbot token={token} />
     </Layout>

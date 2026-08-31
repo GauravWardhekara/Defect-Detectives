@@ -30,7 +30,7 @@ async function startServer() {
   };
 
   // Define API routes FIRST
-  app.post("/api/insights", authenticateToken, async (req, res) => {
+  app.post("/api/insights", async (req, res) => {
     try {
       const { defects } = req.body;
       
@@ -52,7 +52,7 @@ ${JSON.stringify(defects, null, 2)}`;
     }
   });
 
-  app.post("/api/analyze", authenticateToken, async (req, res) => {
+  app.post("/api/analyze", async (req, res) => {
     try {
       const { title, description, project } = req.body;
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -79,7 +79,7 @@ Provide the output in JSON format with "rootCauseAnalysis" and "resolutionNotes"
     }
   });
 
-  app.post("/api/chat", authenticateToken, async (req, res) => {
+  app.post("/api/chat", async (req, res) => {
     try {
       const { history, message, systemInstruction } = req.body;
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });

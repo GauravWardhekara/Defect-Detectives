@@ -12,19 +12,18 @@ export const DashboardView = ({ token }: { token?: string | null }) => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generateInsights = async () => {
-    if (!token) {
-      alert("Please sign in with Google to use the AI insights feature.");
-      return;
-    }
-    
     setIsGenerating(true);
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/insights', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify({ defects })
       });
       
@@ -63,7 +62,7 @@ export const DashboardView = ({ token }: { token?: string | null }) => {
   const projectData = Array.from(projectMap.entries()).map(([name, count]) => ({ name, defects: count }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 flex-1 overflow-y-auto pr-2 pb-10">
       {/* AI Insights Section */}
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">

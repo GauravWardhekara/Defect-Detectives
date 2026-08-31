@@ -52,7 +52,7 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
   const handleCreateNewSheet = () => {
     handleAuth(async (token) => {
       try {
-        const sheet = await createSpreadsheet(token, `Defect Tracker - ${new Date().toISOString().split('T')[0]}`);
+        const sheet = await createSpreadsheet(token, `Defect Diary - ${new Date().toISOString().split('T')[0]}`);
         setSpreadsheetId(sheet.spreadsheetId);
         onLoginSuccess(token);
       } catch (err) {
@@ -102,12 +102,12 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 border border-slate-100 text-center">
+    <div className="bg-slate-100 flex items-center justify-center p-4 rounded-2xl shadow-xl border border-slate-100">
+      <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center">
         <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
           <FileSpreadsheet className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Defect Tracker</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">Defect Diary</h1>
         <p className="text-slate-500 mb-6 text-sm leading-relaxed">
           Log in securely to synchronize your team's defect records with Google Sheets.
         </p>

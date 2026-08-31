@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Columns, Table as TableIcon, FileSpreadsheet, Settings, LogOut, Search, Filter } from 'lucide-react';
+import { LayoutDashboard, Columns, Table as TableIcon, FileSpreadsheet, Settings, LogOut, Search, Filter, Link2, Unlink } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Status } from '../types';
 
@@ -10,12 +10,13 @@ interface LayoutProps {
   onSync: () => void;
   onExportExcel: () => void;
   onOpenSettings: () => void;
+  onOpenConnectModal?: () => void;
   isSyncing?: boolean;
   lastSynced?: Date | null;
 }
 
-export const Layout = ({ children, activeView, setActiveView, onSync, onExportExcel, onOpenSettings, isSyncing, lastSynced }: LayoutProps) => {
-  const { currentUser, isAuthenticated, spreadsheetId, projects, searchQuery, setSearchQuery, filterProject, setFilterProject, filterStatus, setFilterStatus } = useAppContext();
+export const Layout = ({ children, activeView, setActiveView, onSync, onExportExcel, onOpenSettings, onOpenConnectModal, isSyncing, lastSynced }: LayoutProps) => {
+  const { currentUser, isAuthenticated, setIsAuthenticated, spreadsheetId, setSpreadsheetId, spreadsheetTitle, setSpreadsheetTitle, projects, searchQuery, setSearchQuery, filterProject, setFilterProject, filterStatus, setFilterStatus } = useAppContext();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -32,31 +33,60 @@ export const Layout = ({ children, activeView, setActiveView, onSync, onExportEx
             <FileSpreadsheet className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-xl font-bold tracking-tight text-slate-800">
-            IssueSync <span className="text-xs font-normal bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded ml-2 uppercase tracking-wider">Pro</span>
+            Defect <span className="text-xs font-normal bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded ml-2 uppercase tracking-wider">Diary</span>
           </h1>
         </div>
         <div className="flex items-center gap-6">
-          {lastSynced && (
-            <span className="text-xs text-slate-500 hidden sm:inline-block">
+          {spreadsheetId ? (
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Connected</span>
+                <span className="text-sm font-medium text-slate-700 truncate max-w-[150px]">{spreadsheetTitle || 'Google Sheet'}</span>
+              </div>
+              <button 
+                onClick={() => {
+                  setSpreadsheetId(null);
+                  setSpreadsheetTitle(null);
+                  setIsAuthenticated(false);
+                }}
+                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Disconnect"
+              >
+                <Unlink className="w-4 h-4" />
+              </button>
+              <a 
+                href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}`}
+                target="_blank"
+                rel="noreferrer"
+                title="Open Google Sheet in new tab"
+                className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-full hover:bg-green-100 transition-colors cursor-pointer shadow-sm ml-2"
+              >
+                <div className={`w-2 h-2 bg-green-500 rounded-full ${isSyncing ? 'animate-pulse' : ''}`}></div>
+                <span className="text-xs font-medium text-green-700">
+                  {isSyncing ? 'Syncing...' : 'Open'}
+                </span>
+              </a>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Not Connected</span>
+              <button
+                onClick={onOpenConnectModal}
+                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full hover:bg-indigo-100 transition-colors cursor-pointer shadow-sm"
+              >
+                <Link2 className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="text-xs font-medium text-indigo-700">Connect Sheet</span>
+              </button>
+            </div>
+          )}
+          
+          {lastSynced && spreadsheetId && (
+            <span className="text-xs text-slate-500 hidden sm:inline-block border-l pl-6 border-slate-200">
               Last synced: {lastSynced.toLocaleTimeString()}
             </span>
           )}
-          {spreadsheetId && (
-            <a 
-              href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}`}
-              target="_blank"
-              rel="noreferrer"
-              title="Open Google Sheet in new tab"
-              className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-full hover:bg-green-100 transition-colors cursor-pointer shadow-sm"
-            >
-              <div className={`w-2 h-2 bg-green-500 rounded-full ${isSyncing ? 'animate-pulse' : ''}`}></div>
-              <span className="text-xs font-medium text-green-700">
-                {isSyncing ? 'Syncing...' : 'Open Google Sheet'}
-              </span>
-              <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-            </a>
-          )}
-          {isAuthenticated && (
+
+          {currentUser && (
             <div className="flex items-center gap-4 border-l pl-6 border-slate-200">
               <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">
                 {currentUser?.name.charAt(0)}

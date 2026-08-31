@@ -81,6 +81,8 @@ export const ensureDefectsSheetExists = async (token: string, spreadsheetId: str
       throw new Error('Failed to create the Defects sheet in the provided spreadsheet.');
     }
   }
+
+  return sheetData.properties.title;
 };
 
 export const createSpreadsheet = async (token: string, title: string) => {
@@ -203,27 +205,42 @@ export const defectsToRows = (defects: Defect[]): any[][] => {
 
 export const rowsToDefects = (rows: any[][]): Defect[] => {
   if (!rows || rows.length <= 1) return [];
-  return rows.slice(1).filter(r => r[0]).map(r => ({
-    id: r[0] || '',
-    title: r[1] || '',
-    description: r[2] || '',
-    project: r[3] || '',
-    module: r[4] || '',
-    priority: (r[5] as Priority) || Priority.LOW,
-    severity: (r[6] as Severity) || Severity.MINOR,
-    status: (r[7] as Status) || Status.OPEN,
-    assignee: r[8] || '',
-    reporter: r[9] || '',
-    reportedVersion: r[10] || '',
-    targetFixVersion: r[11] || '',
-    reproductionSteps: r[12] || '',
-    expectedBehavior: r[13] || '',
-    actualBehavior: r[14] || '',
-    rootCauseAnalysis: r[15] || '',
-    resolutionNotes: r[16] || '',
-    comments: r[17] || '',
-    imageUrl: r[18] || '',
-    createdAt: r[19] || '',
-    updatedAt: r[20] || ''
-  }));
+  
+  const seenIds = new Set<string>();
+  
+  return rows.slice(1).filter(r => r[0]).map(r => {
+    let id = r[0] || '';
+    if (seenIds.has(id)) {
+      let suffix = 1;
+      while (seenIds.has(`${id}-${suffix}`)) {
+        suffix++;
+      }
+      id = `${id}-${suffix}`;
+    }
+    seenIds.add(id);
+    
+    return {
+      id,
+      title: r[1] || '',
+      description: r[2] || '',
+      project: r[3] || '',
+      module: r[4] || '',
+      priority: (r[5] as Priority) || Priority.LOW,
+      severity: (r[6] as Severity) || Severity.MINOR,
+      status: (r[7] as Status) || Status.OPEN,
+      assignee: r[8] || '',
+      reporter: r[9] || '',
+      reportedVersion: r[10] || '',
+      targetFixVersion: r[11] || '',
+      reproductionSteps: r[12] || '',
+      expectedBehavior: r[13] || '',
+      actualBehavior: r[14] || '',
+      rootCauseAnalysis: r[15] || '',
+      resolutionNotes: r[16] || '',
+      comments: r[17] || '',
+      imageUrl: r[18] || '',
+      createdAt: r[19] || '',
+      updatedAt: r[20] || ''
+    };
+  });
 };

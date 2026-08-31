@@ -13,8 +13,8 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.png'],
         manifest: {
-          name: 'Defect Detective',
-          short_name: 'Defects',
+          name: 'Defect Diary',
+          short_name: 'Defect Diary',
           description: 'A defect tracking application synchronized with Google Sheets.',
           theme_color: '#4f46e5',
           background_color: '#F1F5F9',

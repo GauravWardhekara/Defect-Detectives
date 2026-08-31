@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { AppState, Defect, AuditEvent, User } from '../types';
+import Papa from 'papaparse';
+import { defaultCsvData } from '../data/defaultCsv';
+import { rowsToDefects } from '../lib/googleSheets';
 
 interface AppContextType extends AppState {
   setDefects: (defects: Defect[]) => void;
@@ -10,6 +13,7 @@ interface AppContextType extends AppState {
   addAuditEvent: (event: AuditEvent) => void;
   setCurrentUser: (user: User | null) => void;
   setSpreadsheetId: (id: string | null) => void;
+  setSpreadsheetTitle: (title: string | null) => void;
   setIsAuthenticated: (auth: boolean) => void;
   addUser: (user: User) => void;
   addProject: (project: string) => void;
@@ -25,8 +29,11 @@ interface AppContextType extends AppState {
   filteredDefects: Defect[];
 }
 
+const parsedCsv = Papa.parse(defaultCsvData).data as any[][];
+const defaultDefectsData = rowsToDefects(parsedCsv);
+
 const defaultState: AppState = {
-  defects: [],
+  defects: defaultDefectsData,
   auditTrail: [],
   users: [
     { id: '1', name: 'Alice Engineer', email: 'alice@example.com', department: 'Engineering' },
@@ -39,6 +46,7 @@ const defaultState: AppState = {
   projects: ['E-Commerce Web Portal', 'Mobile iOS & Android', 'Payment Gateway', 'Inventory ERP', 'Customer Support Dashboard', 'Analytics Pipeline', 'Marketing Site'],
   currentUser: null,
   spreadsheetId: null,
+  spreadsheetTitle: null,
   isAuthenticated: false
 };
 
@@ -51,6 +59,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [projects, setProjects] = useState<string[]>(defaultState.projects);
   const [currentUser, setCurrentUser] = useState<User | null>(defaultState.currentUser);
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(defaultState.spreadsheetId);
+  const [spreadsheetTitle, setSpreadsheetTitle] = useState<string | null>(defaultState.spreadsheetTitle);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(defaultState.isAuthenticated);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +78,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const savedSheetId = localStorage.getItem('defect_tracker_sheet_id');
     if (savedSheetId) {
       setSpreadsheetId(savedSheetId);
+    }
+    const savedSheetTitle = localStorage.getItem('defect_tracker_sheet_title');
+    if (savedSheetTitle) {
+      setSpreadsheetTitle(savedSheetTitle);
     }
     const savedApiKey = localStorage.getItem('defect_tracker_gemini_api_key');
     if (savedApiKey) {
@@ -153,6 +166,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setSpreadsheetId(id);
       if (id) localStorage.setItem('defect_tracker_sheet_id', id);
       else localStorage.removeItem('defect_tracker_sheet_id');
+    },
+    spreadsheetTitle, setSpreadsheetTitle: (title: string | null) => {
+      setSpreadsheetTitle(title);
+      if (title) localStorage.setItem('defect_tracker_sheet_title', title);
+      else localStorage.removeItem('defect_tracker_sheet_title');
     },
     isAuthenticated, setIsAuthenticated,
     searchQuery, setSearchQuery,

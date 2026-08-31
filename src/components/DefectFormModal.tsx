@@ -127,10 +127,6 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave, token }: 
   };
 
   const handleAnalyze = async () => {
-    if (!token) {
-      alert("Please sign in with Google to use the AI analysis feature.");
-      return;
-    }
     if (!formData.title && !formData.description) {
       alert("Please enter a title and description first.");
       return;
@@ -138,12 +134,16 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave, token }: 
     
     setIsAnalyzing(true);
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,

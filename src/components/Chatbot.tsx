@@ -24,7 +24,7 @@ export const Chatbot = ({ token }: { token: string | null }) => {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || !token) return;
+    if (!input.trim()) return;
 
     const userMsg: Message = { role: 'user', text: input.trim() };
     const currentHistory = [...messages];
@@ -33,16 +33,20 @@ export const Chatbot = ({ token }: { token: string | null }) => {
     setIsLoading(true);
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify({
           history: currentHistory.filter(m => m.role === 'user' || m.role === 'model'),
           message: userMsg.text,
-          systemInstruction: 'You are a helpful AI assistant for the Defect Detective application. You help users manage, analyze, and understand their software defects.'
+          systemInstruction: 'You are a helpful AI assistant for the Defect Diary application. You help users manage, analyze, and understand their software defects.'
         })
       });
 
@@ -88,7 +92,7 @@ export const Chatbot = ({ token }: { token: string | null }) => {
           </div>
           <div>
             <h3 className="font-semibold text-sm">AI Assistant</h3>
-            <p className="text-xs text-indigo-200">Defect Detective</p>
+            <p className="text-xs text-indigo-200">Defect Diary</p>
           </div>
         </div>
         <button 
