@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { FileSpreadsheet, Plus, Link as LinkIcon, Loader2 } from 'lucide-react';
-import { initGoogleAuth, createSpreadsheet } from '../lib/googleSheets';
+import { FileSpreadsheet, Plus, Link as LinkIcon, Loader2, FolderSearch } from 'lucide-react';
+import { initGoogleAuth, createSpreadsheet, loadGooglePicker } from '../lib/googleSheets';
 import { useAppContext } from '../context/AppContext';
 
 interface LoginProps {
@@ -10,6 +10,7 @@ interface LoginProps {
 export const Login = ({ onLoginSuccess }: LoginProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
+  const [isBrowsing, setIsBrowsing] = useState(false);
   const [sheetIdInput, setSheetIdInput] = useState('');
   const [error, setError] = useState('');
   
@@ -34,12 +35,16 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
         },
         () => {
           setIsLoading(false);
+          setIsLinking(false);
+          setIsBrowsing(false);
           setError('Google Authentication failed or was cancelled.');
         }
       );
       client.requestAccessToken();
     } catch (err) {
       setIsLoading(false);
+      setIsLinking(false);
+      setIsBrowsing(false);
       setError('Could not initialize Google Authentication.');
     }
   };
@@ -60,8 +65,10 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
   const handleLinkSheet = () => {
     if (!sheetIdInput.trim()) {
       setError('Please enter a valid URL or ID');
+      setIsLinking(false);
       return;
     }
+
     let extractedId = sheetIdInput.trim();
     if (extractedId.includes('/d/')) {
       const parts = extractedId.split('/d/');
@@ -74,6 +81,23 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
     handleAuth((token) => {
       setSpreadsheetId(extractedId);
       onLoginSuccess(token);
+    });
+  };
+
+  const handleBrowseDrive = () => {
+    setIsBrowsing(true);
+    handleAuth((token) => {
+      loadGooglePicker(
+        token, 
+        (spreadsheetId) => {
+          setSpreadsheetId(spreadsheetId);
+          onLoginSuccess(token);
+        },
+        () => {
+          setIsLoading(false);
+          setIsBrowsing(false);
+        }
+      );
     });
   };
 
@@ -100,13 +124,22 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
             disabled={isLoading}
             className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70 text-white py-3 px-4 rounded-xl font-medium transition-colors"
           >
-            {isLoading && !isLinking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+            {isLoading && !isLinking && !isBrowsing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
             Create New Shared Sheet
+          </button>
+          
+          <button
+            onClick={handleBrowseDrive}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-3 bg-white border border-indigo-200 hover:bg-indigo-50 disabled:opacity-70 text-indigo-700 py-3 px-4 rounded-xl font-medium transition-colors"
+          >
+            {isLoading && isBrowsing ? <Loader2 className="w-5 h-5 animate-spin" /> : <FolderSearch className="w-5 h-5" />}
+            Browse Google Drive
           </button>
           
           <div className="relative flex py-2 items-center">
             <div className="flex-grow border-t border-slate-200"></div>
-            <span className="shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-semibold">Or</span>
+            <span className="shrink-0 mx-4 text-slate-400 text-xs uppercase tracking-wider font-semibold">Or Paste Link</span>
             <div className="flex-grow border-t border-slate-200"></div>
           </div>
 

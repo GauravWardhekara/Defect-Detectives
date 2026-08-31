@@ -171,6 +171,18 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave, token }: 
 
   const handleTakePhoto = async () => {
     try {
+      // Check permissions first
+      const permissions = await Camera.checkPermissions();
+      
+      if (permissions.camera !== 'granted') {
+        const request = await Camera.requestPermissions();
+        if (request.camera !== 'granted') {
+          console.log('Camera permission denied');
+          alert('Camera permission is required to take photos.');
+          return;
+        }
+      }
+
       const image = await Camera.getPhoto({
         quality: 50,
         allowEditing: false,

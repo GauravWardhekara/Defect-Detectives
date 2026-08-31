@@ -1,6 +1,9 @@
 import { Defect, Priority, Severity, Status } from '../types';
 import firebaseConfig from '../../firebase-applet-config.json';
 
+declare const google: any;
+declare const gapi: any;
+
 const CLIENT_ID = firebaseConfig.oAuthClientId;
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 
@@ -147,6 +150,32 @@ export const appendSheetValues = async (token: string, spreadsheetId: string, ra
   });
   if (!response.ok) throw new Error('Failed to append sheet values');
   return response.json();
+};
+
+export const loadGooglePicker = (token: string, onSelect: (spreadsheetId: string) => void, onCancel: () => void) => {
+  if (typeof gapi === 'undefined') {
+    alert('Google API not loaded yet. Please try again in a moment.');
+    onCancel();
+    return;
+  }
+  gapi.load('picker', { callback: () => {
+    const view = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS);
+    view.setMimeTypes('application/vnd.google-apps.spreadsheet');
+    const picker = new google.picker.PickerBuilder()
+      .addView(view)
+      .setOAuthToken(token)
+      .setDeveloperKey(firebaseConfig.apiKey)
+      .setCallback((data: any) => {
+        if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+          const doc = data[google.picker.Response.DOCUMENTS][0];
+          onSelect(doc[google.picker.Document.ID]);
+        } else if (data[google.picker.Response.ACTION] === google.picker.Action.CANCEL) {
+          onCancel();
+        }
+      })
+      .build();
+    picker.setVisible(true);
+  }});
 };
 
 // Mappers
