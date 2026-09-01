@@ -252,79 +252,197 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // AI Endpoints
-  app.post("/api/insights", async (req, res) => {
-    try {
-      const { defects } = req.body;
-      const key = process.env.GEMINI_API_KEY;
-      if (!key) return res.status(500).json({ error: "Missing Gemini API Key on Master Server" });
-      
-      const ai = new GoogleGenAI({ apiKey: key });
-      const prompt = `Analyze the following software defects and generate a summary report identifying common root causes, potential risk areas, and overall health of the project. Keep the summary concise, professional, and actionable (max 3 short paragraphs).\n\nDefects Data:\n${JSON.stringify(defects, null, 2)}`;
+  // AI Helper function
+  async function generateAIContent(aiConfig: any, prompt: string, isJson: boolean = false, systemInstruction?: string, history: any[] = []) {
+    if (!aiConfig?.apiKey) throw new Error("Missing API Key");
 
+    if (aiConfig.provider === 'gemini') {
+      const ai = new GoogleGenAI({ apiKey: aiConfig.apiKey });
+      const contents = history.map((msg: any) => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text }]
+      }));
+      if (prompt) contents.push({ role: 'user', parts: [{ text: prompt }] });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
+        model: aiConfig.model || 'gemini-2.5-flash',
+        contents,
+        config: {
+          systemInstruction,
+          responseMimeType: isJson ? "application/json" : undefined,
+        }
+      });
+      return response.text;
+    }
+    
+    if (aiConfig.provider === 'openai' || aiConfig.provider === 'custom') {
+      const baseUrl = aiConfig.provider === 'custom' ? aiConfig.baseUrl : 'https://api.openai.com/v1';
+      
+      const messages = [];
+      if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
+      history.forEach((msg: any) => {
+        messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.text });
+      });
+      if (prompt) messages.push({ role: 'user', content: prompt });
+
+      const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${aiConfig.apiKey}`
+        },
+        body: JSON.stringify({
+          model: aiConfig.model || 'gpt-4o',
+          messages,
+          response_format: isJson && aiConfig.provider === 'openai' ? { type: "json_object" } : undefined
+        })
+      });
+      
+      if (!response.ok) throw new Error(await response.text());
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
+
+    if (aiConfig.provider === 'anthropic') {
+      const messages = [];
+      history.forEach((msg: any) => {
+        messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.text });
+      });
+      if (prompt) messages.push({ role: 'user', content: prompt });
+
+      let systemStr = systemInstruction || "";
+      if (isJson) {
+        systemStr += "\nProvide the output strictly in JSON format.";
+        if (messages.length === 0 || messages[messages.length - 1].role !== 'assistant') {
+           messages.push({ role: 'assistant', content: "{" });
+        }
+      }
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': aiConfig.apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: aiConfig.model || 'claude-3-5-sonnet-20240620',
+          max_tokens: 1024,
+          system: systemStr,
+          messages
+        })
       });
 
-      res.json({ insights: response.text });
-    } catch (e) {
+      if (!response.ok) throw new Error(await response.text());
+      const data = await response.json();
+      let text = data.content[0].text;
+      if (isJson && !text.startsWith('{')) text = "{" + text;
+      return text;
+    }
+    
+    throw new Error("Unsupported AI Provider");
+  }
+
+  // AI Endpoints
+  app.post("/api/models", async (req, res) => {
+    try {
+      const { aiConfig } = req.body;
+      if (!aiConfig?.apiKey) throw new Error("Missing API Key");
+
+      let models: string[] = [];
+
+      if (aiConfig.provider === 'gemini') {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${aiConfig.apiKey}`);
+        if (!response.ok) throw new Error("Invalid API Key or Gemini API error");
+        const data = await response.json();
+        models = data.models
+          .filter((m: any) => m.supportedGenerationMethods.includes('generateContent'))
+          .map((m: any) => m.name.replace('models/', ''));
+      } 
+      else if (aiConfig.provider === 'openai' || aiConfig.provider === 'custom') {
+        const baseUrl = aiConfig.provider === 'custom' ? aiConfig.baseUrl : 'https://api.openai.com/v1';
+        const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/models`, {
+          headers: { 'Authorization': `Bearer ${aiConfig.apiKey}` }
+        });
+        if (!response.ok) throw new Error("Invalid API Key, Base URL, or Provider error");
+        const data = await response.json();
+        models = data.data.map((m: any) => m.id);
+      }
+      else if (aiConfig.provider === 'anthropic') {
+        const response = await fetch('https://api.anthropic.com/v1/models', {
+          headers: { 
+            'x-api-key': aiConfig.apiKey, 
+            'anthropic-version': '2023-06-01' 
+          }
+        });
+        if (!response.ok) {
+           // Fallback test
+           const test = await fetch('https://api.anthropic.com/v1/messages', {
+             method: 'POST',
+             headers: {
+               'Content-Type': 'application/json',
+               'x-api-key': aiConfig.apiKey,
+               'anthropic-version': '2023-06-01'
+             },
+             body: JSON.stringify({
+               model: 'claude-3-haiku-20240307',
+               max_tokens: 1,
+               messages: [{role: 'user', content: 'hi'}]
+             })
+           });
+           if (!test.ok) throw new Error("Invalid API Key or Anthropic API error");
+           models = ['claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'];
+        } else {
+           const data = await response.json();
+           models = data.data.map((m: any) => m.id);
+        }
+      }
+      else {
+        throw new Error("Unsupported AI Provider");
+      }
+
+      res.json({ models });
+    } catch (e: any) {
       console.error(e);
-      res.status(500).json({ error: "Failed to generate insights" });
+      res.status(500).json({ error: e.message || "Failed to fetch models" });
+    }
+  });
+
+  app.post("/api/insights", async (req, res) => {
+    try {
+      const { defects, aiConfig } = req.body;
+      const prompt = `Analyze the following software defects and generate a summary report identifying common root causes, potential risk areas, and overall health of the project. Keep the summary concise, professional, and actionable (max 3 short paragraphs).\n\nDefects Data:\n${JSON.stringify(defects, null, 2)}`;
+
+      const text = await generateAIContent(aiConfig, prompt);
+      res.json({ insights: text });
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message || "Failed to generate insights" });
     }
   });
 
   app.post("/api/analyze", async (req, res) => {
     try {
-      const { title, description, project } = req.body;
-      const key = process.env.GEMINI_API_KEY;
-      if (!key) return res.status(500).json({ error: "Missing Gemini API Key on Master Server" });
-
-      const ai = new GoogleGenAI({ apiKey: key });
+      const { title, description, project, aiConfig } = req.body;
       const prompt = `Analyze this defect and suggest a concise root cause analysis (1-2 sentences) and resolution notes if applicable.\nTitle: ${title}\nDescription: ${description}\nProject: ${project}\n\nProvide the output in JSON format with "rootCauseAnalysis" and "resolutionNotes" fields.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-        }
-      });
+      const text = await generateAIContent(aiConfig, prompt, true);
       
-      const result = JSON.parse(response.text || "{}");
+      const result = JSON.parse(text || "{}");
       res.json(result);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      res.status(500).json({ error: "Failed to analyze defect" });
+      res.status(500).json({ error: e.message || "Failed to analyze defect" });
     }
   });
 
   app.post("/api/chat", async (req, res) => {
     try {
-      const { history, message, systemInstruction } = req.body;
-      const key = process.env.GEMINI_API_KEY;
-      if (!key) return res.status(500).json({ error: "Missing Gemini API Key on Master Server" });
-
-      const ai = new GoogleGenAI({ apiKey: key });
-      
-      const contents = history.map((msg: any) => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.text }]
-      }));
-      contents.push({ role: 'user', parts: [{ text: message }] });
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents,
-        config: {
-          systemInstruction,
-        }
-      });
-      
-      res.json({ text: response.text });
-    } catch (e) {
+      const { history, message, systemInstruction, aiConfig } = req.body;
+      const text = await generateAIContent(aiConfig, message, false, systemInstruction, history);
+      res.json({ text });
+    } catch (e: any) {
       console.error(e);
-      res.status(500).json({ error: "Failed to generate chat response" });
+      res.status(500).json({ error: e.message || "Failed to generate chat response" });
     }
   });
 

@@ -8,7 +8,7 @@ interface Message {
 }
 
 export const Chatbot = () => {
-  const { networkConfig } = useAppContext();
+  const { networkConfig, aiConfig } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: 'model', text: 'Hello! I am your AI assistant. How can I help you with your defects today?' }
@@ -28,6 +28,12 @@ export const Chatbot = () => {
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    if (!aiConfig?.apiKey) {
+      setMessages(prev => [...prev, { role: 'user', text: input.trim() }, { role: 'model', text: 'Please configure your AI API key in the Workspace Settings first.' }]);
+      setInput('');
+      return;
+    }
+
     const userMsg: Message = { role: 'user', text: input.trim() };
     const currentHistory = [...messages];
     setMessages(prev => [...prev, userMsg]);
@@ -46,7 +52,8 @@ export const Chatbot = () => {
         body: JSON.stringify({
           history: currentHistory.filter(m => m.role === 'user' || m.role === 'model'),
           message: userMsg.text,
-          systemInstruction: 'You are a helpful AI assistant for the Defect Diary application. You help users manage, analyze, and understand their software defects.'
+          systemInstruction: 'You are a helpful AI assistant for the Defect Diary application. You help users manage, analyze, and understand their software defects.',
+          aiConfig
         })
       });
 

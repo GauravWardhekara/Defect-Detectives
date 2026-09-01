@@ -22,7 +22,7 @@ const STATUS_STAGES = [
 ];
 
 export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectFormModalProps) => {
-  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser, networkConfig } = useAppContext();
+  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser, networkConfig, aiConfig } = useAppContext();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -130,6 +130,11 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
       alert("Please enter a title and description first.");
       return;
     }
+
+    if (!aiConfig?.apiKey) {
+      alert("Please configure your AI API key in the Workspace Settings first.");
+      return;
+    }
     
     setIsAnalyzing(true);
     try {
@@ -144,7 +149,8 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,
-          project: formData.project
+          project: formData.project,
+          aiConfig
         })
       });
       

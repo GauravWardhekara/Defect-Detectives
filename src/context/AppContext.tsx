@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { AppState, Defect, AuditEvent, User } from '../types';
+import { AppState, Defect, AuditEvent, User, AIConfig } from '../types';
 import Papa from 'papaparse';
 import { defaultCsvData } from '../data/defaultCsv';
 import { io, Socket } from 'socket.io-client';
@@ -27,6 +27,8 @@ interface AppContextType extends AppState {
   deleteDefect: (id: string) => void;
   geminiApiKey: string | null;
   setGeminiApiKey: (key: string | null) => void;
+  aiConfig: AIConfig | null;
+  setAiConfig: (config: AIConfig | null) => void;
   filteredDefects: Defect[];
   
   // Network Config
@@ -44,6 +46,7 @@ const defaultState: AppState = {
   users: [],
   projects: ['E-Commerce Web Portal', 'Mobile iOS & Android', 'Payment Gateway', 'Inventory ERP', 'Customer Support Dashboard', 'Analytics Pipeline', 'Marketing Site'],
   currentUser: null,
+  aiConfig: null,
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -54,6 +57,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>(defaultState.users);
   const [projects, setProjects] = useState<string[]>(defaultState.projects);
   const [currentUser, setCurrentUser] = useState<User | null>(defaultState.currentUser);
+  const [aiConfig, setAiConfigState] = useState<AIConfig | null>(defaultState.aiConfig);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterProject, setFilterProject] = useState<string | 'All'>('All');
@@ -63,6 +67,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [networkConfig, setNetworkConfig] = useState<{isMaster: boolean, masterUrl: string | null, orgCode?: string, inviteCode?: string} | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [authStatus, setAuthStatus] = useState<'pending' | 'success' | 'required' | 'failed'>('pending');
+
+  const setAiConfig = (config: AIConfig | null) => {
+    setAiConfigState(config);
+    if (config) localStorage.setItem('defect_tracker_ai_config', JSON.stringify(config));
+    else localStorage.removeItem('defect_tracker_ai_config');
+  };
 
   const setGeminiApiKey = (key: string | null) => {
     setGeminiApiKeyState(key);
@@ -95,6 +105,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setGeminiApiKeyState(savedApiKey);
     }
 
+    const savedAiConfig = localStorage.getItem('defect_tracker_ai_config');
+    if (savedAiConfig) {
+      try {
+        setAiConfigState(JSON.parse(savedAiConfig));
+      } catch (e) {
+        console.error("Failed to parse AI Config", e);
+      }
+    }
+
     const savedProfile = localStorage.getItem('defect_diary_profile');
     let loadedProfile: User | null = null;
     if (savedProfile) {
@@ -104,7 +123,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     
     // Fetch LAN config on boot
     const fetchConfig = () => {
-      fetch('/api/config')
+      fetch('/api/config?t=' + Date.now())
         .then(res => {
           if (!res.ok) throw new Error('Network response was not ok');
           return res.json();
@@ -112,7 +131,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         .then(data => {
           setNetworkConfig(data);
           if (data.masterUrl && loadedProfile) {
-            const s = io(data.masterUrl);
+            // If we are the master node, connect to the same origin we're served from
+            const urlToConnect = data.isMaster ? '/' : data.masterUrl;
+            const s = io(urlToConnect);
             
             s.on("connect", () => {
               s.emit("auth", loadedProfile);
@@ -164,7 +185,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // If we just created a profile, and we have a masterUrl but no socket, we should connect.
     if (networkConfig?.masterUrl && currentUser && !socket) {
-      const s = io(networkConfig.masterUrl);
+      const urlToConnect = networkConfig.isMaster ? '/' : networkConfig.masterUrl;
+      const s = io(urlToConnect);
       
       s.on("connect", () => {
         s.emit("auth", currentUser);
@@ -291,6 +313,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     filterProject, setFilterProject,
     filterStatus, setFilterStatus,
     geminiApiKey, setGeminiApiKey,
+    aiConfig, setAiConfig,
     filteredDefects,
     networkConfig,
     socket,

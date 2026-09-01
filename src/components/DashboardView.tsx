@@ -7,11 +7,16 @@ import { ShieldAlert, CheckCircle2, AlertTriangle, Activity, Sparkles, Loader2 }
 const COLORS = ['#6366f1', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b'];
 
 export const DashboardView = () => {
-  const { filteredDefects: defects, networkConfig } = useAppContext();
+  const { filteredDefects: defects, networkConfig, aiConfig } = useAppContext();
   const [insights, setInsights] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generateInsights = async () => {
+    if (!aiConfig?.apiKey) {
+      setInsights("Please configure your AI API key in the Workspace Settings first.");
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const headers: Record<string, string> = {
@@ -22,7 +27,7 @@ export const DashboardView = () => {
       const response = await fetch(`${baseUrl}/api/insights`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ defects })
+        body: JSON.stringify({ defects, aiConfig })
       });
       
       if (!response.ok) {

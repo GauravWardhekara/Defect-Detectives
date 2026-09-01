@@ -63,6 +63,15 @@ export interface User {
   department?: string;
 }
 
+export type AIProvider = 'gemini' | 'openai' | 'anthropic' | 'custom';
+
+export interface AIConfig {
+  provider: AIProvider;
+  apiKey: string;
+  model: string;
+  baseUrl?: string;
+}
+
 // Store state definition
 export interface AppState {
   defects: Defect[];
@@ -70,4 +79,5 @@ export interface AppState {
   users: User[];
   projects: string[];
   currentUser: User | null;
+  aiConfig: AIConfig | null;
 }
