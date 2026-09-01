@@ -4,6 +4,7 @@ import Papa from 'papaparse';
 import { defaultCsvData } from '../data/defaultCsv';
 import { io, Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
+import { generateProfileCard } from '../lib/profile';
 
 interface AppContextType extends AppState {
   setDefects: (defects: Defect[]) => void;
@@ -80,9 +81,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setCurrentUser(profileToSave);
     
     // Automatically trigger download on new profile creation or update
-    import('../lib/profile').then(({ generateProfileCard }) => {
-      generateProfileCard(profileToSave);
-    });
+    generateProfileCard(profileToSave);
   };
 
   const importProfile = (user: User) => {
