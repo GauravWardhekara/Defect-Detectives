@@ -8,7 +8,13 @@ let serverProcess;
 function startServer() {
   if (!isDev) {
     const serverPath = path.join(__dirname, '../dist/server.cjs');
-    serverProcess = fork(serverPath);
+    serverProcess = fork(serverPath, [], {
+      env: {
+        ...process.env,
+        NODE_ENV: 'production',
+        USER_DATA_PATH: app.getPath('userData')
+      }
+    });
     serverProcess.on('error', (err) => {
       console.error('Failed to start backend server:', err);
     });

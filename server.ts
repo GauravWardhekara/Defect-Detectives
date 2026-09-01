@@ -1,6 +1,6 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
+// Dynamic import used later for vite
 import { GoogleGenAI } from "@google/genai";
 import { Server } from "socket.io";
 import http from "http";
@@ -11,8 +11,9 @@ import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { Bonjour } from "bonjour-service";
 
-const DB_FILE = path.join(process.cwd(), "defects.enc");
-const CONFIG_FILE = path.join(process.cwd(), "server-config.json");
+const basePath = process.env.USER_DATA_PATH || process.cwd();
+const DB_FILE = path.join(basePath, "defects.enc");
+const CONFIG_FILE = path.join(basePath, "server-config.json");
 
 const CIPHER_ALGO = "aes-256-cbc";
 
@@ -37,7 +38,7 @@ if (fs.existsSync(CONFIG_FILE)) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverConfig, null, 2));
 }
 
-const BACKUP_DIR = path.join(process.cwd(), "backups");
+const BACKUP_DIR = path.join(basePath, "backups");
 if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR);
 }
@@ -448,6 +449,7 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
@@ -457,7 +459,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = __dirname;
     app.use(express.static(distPath));
     app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
