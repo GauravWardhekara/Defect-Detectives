@@ -9,11 +9,16 @@ export const NetworkConnect = () => {
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [importError, setImportError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportError('');
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -22,7 +27,10 @@ export const NetworkConnect = () => {
       if (user) {
         importProfile(user);
       } else {
-        alert("Invalid or corrupted profile card.");
+        setImportError("Invalid or corrupted profile card. Please try again.");
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     };
     reader.readAsText(file);
@@ -107,6 +115,9 @@ export const NetworkConnect = () => {
               <Upload className="w-4 h-4" />
               Restore Profile from Card
             </button>
+            {importError && (
+              <p className="text-red-500 text-xs font-medium text-center mt-2">{importError}</p>
+            )}
           </div>
         </div>
       </div>
