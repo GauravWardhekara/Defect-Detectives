@@ -229,6 +229,29 @@ async function startServer() {
     });
   });
 
+  app.post("/api/promote", (req, res) => {
+    isMaster = true;
+    const interfaces = os.networkInterfaces();
+    let localIp = 'localhost';
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name] || []) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          localIp = iface.address;
+          break;
+        }
+      }
+    }
+    masterUrl = `http://${localIp}:${PORT}`;
+    
+    try {
+      bonjour.publish({ name: 'DefectDiaryServer_' + os.hostname(), type: 'defectdiary', port: PORT });
+    } catch (e) {
+      console.warn("Could not publish mDNS service (expected in cloud environments)");
+    }
+
+    res.json({ success: true });
+  });
+
   // AI Endpoints
   app.post("/api/insights", async (req, res) => {
     try {

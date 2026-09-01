@@ -104,50 +104,58 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     
     // Fetch LAN config on boot
-    fetch('/api/config')
-      .then(res => res.json())
-      .then(data => {
-        setNetworkConfig(data);
-        if (data.masterUrl && loadedProfile) {
-          const s = io(data.masterUrl);
-          
-          s.on("connect", () => {
-            s.emit("auth", loadedProfile);
-          });
+    const fetchConfig = () => {
+      fetch('/api/config')
+        .then(res => {
+          if (!res.ok) throw new Error('Network response was not ok');
+          return res.json();
+        })
+        .then(data => {
+          setNetworkConfig(data);
+          if (data.masterUrl && loadedProfile) {
+            const s = io(data.masterUrl);
+            
+            s.on("connect", () => {
+              s.emit("auth", loadedProfile);
+            });
 
-          s.on("auth_success", (res: { orgCode: string, users: User[], defects: Defect[] }) => {
-            setAuthStatus('success');
-            setUsers(res.users);
-            setDefects(res.defects);
-            setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode } : null);
-          });
+            s.on("auth_success", (res: { orgCode: string, users: User[], defects: Defect[] }) => {
+              setAuthStatus('success');
+              setUsers(res.users);
+              setDefects(res.defects);
+              setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode } : null);
+            });
 
-          s.on("auth_required", () => {
-            setAuthStatus('required');
-          });
+            s.on("auth_required", () => {
+              setAuthStatus('required');
+            });
 
-          s.on("auth_failed", (err) => {
-            setAuthStatus('failed');
-            alert(`Authentication failed: ${err}`);
-          });
+            s.on("auth_failed", (err) => {
+              setAuthStatus('failed');
+              alert(`Authentication failed: ${err}`);
+            });
 
-          s.on("users_updated", (orgUsers: User[]) => {
-            setUsers(orgUsers);
-          });
+            s.on("users_updated", (orgUsers: User[]) => {
+              setUsers(orgUsers);
+            });
 
-          s.on("sync", (syncedDefects: Defect[]) => {
-            setDefects(syncedDefects);
-          });
+            s.on("sync", (syncedDefects: Defect[]) => {
+              setDefects(syncedDefects);
+            });
 
-          setSocket(s);
-        } else if (data.masterUrl && !loadedProfile) {
-          // If no profile yet, we just hold off on socket auth
-          setAuthStatus('required'); // They need to make profile first
-        }
-      })
-      .catch(err => {
-        console.error("Could not fetch network config:", err);
-      });
+            setSocket(s);
+          } else if (data.masterUrl && !loadedProfile) {
+            // If no profile yet, we just hold off on socket auth
+            setAuthStatus('required'); // They need to make profile first
+          }
+        })
+        .catch(err => {
+          console.error("Could not fetch network config, retrying in 2s:", err);
+          setTimeout(fetchConfig, 2000);
+        });
+    };
+    
+    fetchConfig();
       
     return () => {
       if (socket) socket.disconnect();
