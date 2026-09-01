@@ -80,7 +80,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     else localStorage.removeItem('defect_tracker_gemini_api_key');
   };
 
-  const saveProfile = (name: string, department: string) => {
+  const saveProfile = async (name: string, department: string) => {
     let profileToSave = currentUser;
     if (!profileToSave) {
       profileToSave = { id: uuidv4(), name, email: `${name.replace(/\s+/g, '').toLowerCase()}@local`, department };
@@ -91,7 +91,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setCurrentUser(profileToSave);
     
     // Automatically trigger download on new profile creation or update
-    generateProfileCard(profileToSave);
+    await generateProfileCard(profileToSave);
   };
 
   const importProfile = (user: User) => {
@@ -132,11 +132,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           s.on("connect", () => {
             s.emit("auth", loadedProfile);
           });
-          s.on("auth_success", (res: { orgCode: string, users: User[], defects: Defect[] }) => {
+          s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[] }) => {
             setAuthStatus('success');
             setUsers(res.users);
             setDefects(res.defects);
-            setNetworkConfig({ ...mockConfig, orgCode: res.orgCode });
+            setNetworkConfig({ ...mockConfig, orgCode: res.orgCode, inviteCode: res.inviteCode });
           });
           s.on("auth_required", () => {
             setAuthStatus('required');
@@ -176,11 +176,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               s.emit("auth", loadedProfile);
             });
 
-            s.on("auth_success", (res: { orgCode: string, users: User[], defects: Defect[] }) => {
+            s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[] }) => {
               setAuthStatus('success');
               setUsers(res.users);
               setDefects(res.defects);
-              setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode } : null);
+              setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode, inviteCode: res.inviteCode } : null);
             });
 
             s.on("auth_required", () => {
@@ -231,11 +231,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         s.emit("auth", currentUser);
       });
 
-      s.on("auth_success", (res: { orgCode: string, users: User[], defects: Defect[] }) => {
+      s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[] }) => {
         setAuthStatus('success');
         setUsers(res.users);
         setDefects(res.defects);
-        setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode } : null);
+        setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode, inviteCode: res.inviteCode } : null);
       });
 
       s.on("auth_required", () => {

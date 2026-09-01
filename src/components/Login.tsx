@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Wifi, Loader2, Server, Computer, User, ShieldCheck, Upload } from 'lucide-react';
+import { Wifi, Loader2, Server, Computer, User, ShieldCheck, Upload, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { parseProfileCard } from '../lib/profile';
 
@@ -16,9 +16,9 @@ export const NetworkConnect = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
-      const user = parseProfileCard(content);
+      const user = await parseProfileCard(content);
       if (user) {
         importProfile(user);
       } else {
@@ -188,15 +188,33 @@ export const NetworkConnect = () => {
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 relative group">
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Invite Code</div>
                   <div className="text-3xl font-mono font-bold text-indigo-600 tracking-[0.2em]">{networkConfig.inviteCode}</div>
-                  <button 
-                    onClick={() => {
-                      if (networkConfig?.inviteCode) navigator.clipboard.writeText(networkConfig.inviteCode);
-                    }}
-                    className="absolute top-2 right-2 p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-slate-200 shadow-sm opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    title="Copy Invite Code"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                  </button>
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => {
+                        if (networkConfig?.inviteCode) navigator.clipboard.writeText(networkConfig.inviteCode);
+                      }}
+                      className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-slate-200 shadow-sm"
+                      title="Copy Invite Code"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    </button>
+                    {navigator.share && (
+                      <button 
+                        onClick={() => {
+                          if (networkConfig?.inviteCode) {
+                            navigator.share({
+                              title: 'Defect Diary Workspace',
+                              text: `Join my Defect Diary workspace using this invite code: ${networkConfig.inviteCode}`,
+                            }).catch(console.error);
+                          }
+                        }}
+                        className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-slate-200 shadow-sm"
+                        title="Share Invite Code"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </>
             ) : (
@@ -211,6 +229,39 @@ export const NetworkConnect = () => {
                       <ShieldCheck className="w-5 h-5" />
                       Workspace Access Granted
                     </div>
+                    {networkConfig.inviteCode && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 relative group">
+                        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Invite Code</div>
+                        <div className="text-3xl font-mono font-bold text-indigo-600 tracking-[0.2em]">{networkConfig.inviteCode}</div>
+                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => {
+                              if (networkConfig?.inviteCode) navigator.clipboard.writeText(networkConfig.inviteCode);
+                            }}
+                            className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-slate-200 shadow-sm"
+                            title="Copy Invite Code"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                          </button>
+                          {navigator.share && (
+                            <button 
+                              onClick={() => {
+                                if (networkConfig?.inviteCode) {
+                                  navigator.share({
+                                    title: 'Defect Diary Workspace',
+                                    text: `Join my Defect Diary workspace using this invite code: ${networkConfig.inviteCode}`,
+                                  }).catch(console.error);
+                                }
+                              }}
+                              className="p-2 bg-white text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-slate-200 shadow-sm"
+                              title="Share Invite Code"
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>

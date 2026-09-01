@@ -209,7 +209,7 @@ export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
           <div className="p-4 bg-green-50 text-green-800 rounded-lg border border-green-200">
             <h3 className="font-bold mb-1">Local Encryption Active</h3>
             <p className="text-sm">
-              Your defect data is encrypted at rest using AES-256-CBC. Master keys are kept locally, ensuring no cloud dependency.
+              Your defect data is encrypted at rest using AES-256-CBC, and your local profile is secured with the native Web Crypto API (AES-GCM). Master keys are kept locally, ensuring no cloud dependency.
             </p>
           </div>
         </div>

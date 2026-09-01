@@ -36,7 +36,7 @@ export const Layout = ({ children, activeView, setActiveView, onSync, onExportEx
             <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
           <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-800 flex items-center">
-            Defect <span className="hidden sm:inline-block text-xs font-normal bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded ml-2 uppercase tracking-wider">Diary</span>
+            Defect Diary
           </h1>
         </div>
         <div className="flex items-center gap-2 sm:gap-6">

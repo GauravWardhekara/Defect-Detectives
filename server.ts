@@ -176,7 +176,7 @@ async function startServer() {
         }
 
         if (isWhitelisted) {
-          socket.emit("auth_success", { orgCode: serverConfig.orgCode, users: serverConfig.users, defects });
+          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects });
           socket.join(serverConfig.orgCode);
         } else {
           socket.emit("auth_required");
@@ -189,7 +189,7 @@ async function startServer() {
             serverConfig.users.push(data.profile);
             saveConfig();
           }
-          socket.emit("auth_success", { orgCode: serverConfig.orgCode, users: serverConfig.users, defects });
+          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects });
           socket.join(serverConfig.orgCode);
           // Broadcast new user list to all in org
           io.to(serverConfig.orgCode).emit("users_updated", serverConfig.users);
