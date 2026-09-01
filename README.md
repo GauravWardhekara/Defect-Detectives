@@ -11,7 +11,6 @@
     <a href="#features">Features</a> •
     <a href="#tech-stack">Tech Stack</a> •
     <a href="#getting-started">Getting Started</a> •
-    <a href="#testing">Testing</a> •
     <a href="#legal">Legal</a>
   </p>
   
@@ -20,7 +19,6 @@
     <img src="https://img.shields.io/badge/Vite-6-purple.svg" alt="Vite" />
     <img src="https://img.shields.io/badge/Electron-Desktop-lightgrey.svg" alt="Electron" />
     <img src="https://img.shields.io/badge/Capacitor-Mobile-blueviolet.svg" alt="Capacitor" />
-    <img src="https://img.shields.io/badge/Appium-Testing-red.svg" alt="Appium" />
   </p>
 </div>
 
@@ -97,18 +95,6 @@ npm run cap:android # For Android
 - **Web:** `npm run build`
 - **Electron:** `npm run electron:build`
 - **Mobile Sync:** `npm run cap:sync`
-
-## 🧪 Testing
-
-We use **Behave** (BDD) and **Appium** for automated end-to-end testing across our mobile and desktop platforms.
-
-### Running Automated Tests
-1. Ensure your Appium server is running and devices/emulators are connected.
-2. Execute the Behave test suites:
-   ```bash
-   behave
-   ```
-*(Note: Ensure your Python environment is activated and dependencies for Appium and Behave are installed before running the tests).*
 
 ## 📜 Legal
 
