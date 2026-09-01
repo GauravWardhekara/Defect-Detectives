@@ -16,7 +16,8 @@
     "cap:ios": "npm run build && cap sync ios && cap open ios",
     "cap:android": "npm run build && cap sync android && cap open android",
     "electron:dev": "concurrently \"vite\" \"wait-on tcp:3000 && cross-env NODE_ENV=development electron .\"",
-    "electron:build": "npm run build && electron-builder -w"
+    "electron:build": "npm run build && electron-builder -w",
+    "generate-icons": "npx @capacitor/assets generate"
   },
   "build": {
     "appId": "com.defectdiary.app",
@@ -30,7 +31,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/icon.svg"
+      "icon": "public/icon.png"
     }
   },
   "dependencies": {

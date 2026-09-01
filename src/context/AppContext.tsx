@@ -122,7 +122,44 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     
     // Fetch LAN config on boot
-    const fetchConfig = () => {
+    const fetchConfig = (retryCount = 0) => {
+      const manualUrl = localStorage.getItem('manual_master_url');
+      if (manualUrl) {
+        const mockConfig = { isMaster: false, masterUrl: manualUrl };
+        setNetworkConfig(mockConfig);
+        if (loadedProfile) {
+          const s = io(manualUrl);
+          s.on("connect", () => {
+            s.emit("auth", loadedProfile);
+          });
+          s.on("auth_success", (res: { orgCode: string, users: User[], defects: Defect[] }) => {
+            setAuthStatus('success');
+            setUsers(res.users);
+            setDefects(res.defects);
+            setNetworkConfig({ ...mockConfig, orgCode: res.orgCode });
+          });
+          s.on("auth_required", () => {
+            setAuthStatus('required');
+          });
+          s.on("auth_failed", (err) => {
+            setAuthStatus('failed');
+            alert(`Authentication failed: ${err}`);
+            localStorage.removeItem('manual_master_url');
+            window.location.reload();
+          });
+          s.on("users_updated", (orgUsers: User[]) => {
+            setUsers(orgUsers);
+          });
+          s.on("sync", (syncedDefects: Defect[]) => {
+            setDefects(syncedDefects);
+          });
+          setSocket(s);
+        } else {
+          setAuthStatus('required');
+        }
+        return;
+      }
+
       fetch('/api/config?t=' + Date.now())
         .then(res => {
           if (!res.ok) throw new Error('Network response was not ok');
@@ -171,7 +208,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         })
         .catch(err => {
           console.error("Could not fetch network config, retrying in 2s:", err);
-          setTimeout(fetchConfig, 2000);
+          if (retryCount < 5) {
+            setTimeout(() => fetchConfig(retryCount + 1), 2000);
+          }
         });
     };
     

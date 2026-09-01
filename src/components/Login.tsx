@@ -42,11 +42,12 @@ export const NetworkConnect = () => {
 
   const handleForceHost = async () => {
     try {
-      await fetch('/api/promote', { method: 'POST' });
+      const res = await fetch('/api/promote', { method: 'POST' });
+      if (!res.ok) throw new Error('Cannot host on this environment');
       window.location.reload();
     } catch (err) {
       console.error(err);
-      window.location.reload();
+      alert('Cannot host workspace. This device does not have the backend server running. You must run the desktop app or standard server to host.');
     }
   };
 
@@ -125,10 +126,44 @@ export const NetworkConnect = () => {
               Searching for an existing Defect Diary server on your local network.
             </p>
             {scanTimeout && (
-              <div className="mt-4 animate-fade-in">
-                <p className="text-amber-600 text-sm font-medium mb-4">
-                  Scanning is taking longer than expected. You can continue waiting, or stop scanning and host your own workspace.
+              <div className="mt-4 animate-fade-in text-left">
+                <p className="text-amber-600 text-sm font-medium mb-4 text-center">
+                  Scanning is taking longer than expected. You can continue waiting, connect manually, or host your own workspace.
                 </p>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Manual Server URL</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      id="manual-url"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="e.g. http://192.168.1.5:3000"
+                    />
+                    <button
+                      onClick={() => {
+                        const url = (document.getElementById('manual-url') as HTMLInputElement).value;
+                        if (url) {
+                          // Allow forcing a connection by setting network config manually
+                          // To avoid full context rewrite, we'll just redirect to it with a query param or save it
+                          // but since we rely on the backend for this, we can just save it to localStorage and reload
+                          localStorage.setItem('manual_master_url', url);
+                          window.location.reload();
+                        }
+                      }}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 whitespace-nowrap"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative flex py-4 items-center">
+                    <div className="flex-grow border-t border-slate-200"></div>
+                    <span className="flex-shrink-0 mx-4 text-slate-400 text-xs">OR</span>
+                    <div className="flex-grow border-t border-slate-200"></div>
+                </div>
+
                 <button
                   onClick={handleForceHost}
                   className="w-full bg-slate-900 text-white font-medium rounded-lg px-4 py-3 hover:bg-slate-800 transition-colors"

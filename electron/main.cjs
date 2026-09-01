@@ -1,7 +1,19 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const { fork } = require('child_process');
 
 const isDev = !app.isPackaged;
+let serverProcess;
+
+function startServer() {
+  if (!isDev) {
+    const serverPath = path.join(__dirname, '../dist/server.cjs');
+    serverProcess = fork(serverPath);
+    serverProcess.on('error', (err) => {
+      console.error('Failed to start backend server:', err);
+    });
+  }
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -11,18 +23,23 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false
     },
-    icon: path.join(__dirname, '../public/icon.svg')
+    icon: path.join(__dirname, '../public/icon.png')
   });
 
   if (isDev) {
     win.loadURL('http://localhost:3000');
     win.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'));
+    // In production, the backend server binds to port 3000 and serves the frontend.
+    // Wait slightly to ensure the server is up before loading.
+    setTimeout(() => {
+      win.loadURL('http://localhost:3000');
+    }, 1500);
   }
 }
 
 app.whenReady().then(() => {
+  startServer();
   createWindow();
 
   app.on('activate', () => {
@@ -30,6 +47,12 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+app.on('will-quit', () => {
+  if (serverProcess) {
+    serverProcess.kill();
+  }
 });
 
 app.on('window-all-closed', () => {
