@@ -1,5 +1,7 @@
 {
-  "name": "defect-diary",
+  "name": "Defect Diary",
+  "description": "Defect Diary Desktop Application",
+  "author": "Gaurav Wardhekar",
   "private": true,
   "version": "2.0.0",
   "type": "module",
@@ -26,11 +28,11 @@
       "output": "dist-electron"
     },
     "files": [
-      "dist/**/*",
-      "electron/**/*"
+      "dist/**",
+      "electron/**"
     ],
     "asarUnpack": [
-      "dist/**/*"
+      "dist/**"
     ],
     "win": {
       "target": "nsis",
