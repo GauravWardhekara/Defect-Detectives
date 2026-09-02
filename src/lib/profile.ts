@@ -1,6 +1,6 @@
 import { User } from '../types';
 
-const PROFILE_SECRET = 'defect-diary-secure-profile-v1';
+const PROFILE_SECRET = import.meta.env.VITE_PROFILE_SECRET || 'defect-diary-secure-profile-v1';
 
 async function getKey(): Promise<CryptoKey> {
   const enc = new TextEncoder();

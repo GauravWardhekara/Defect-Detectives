@@ -11,6 +11,7 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { TableView } from './components/TableView';
 import { DefectFormModal } from './components/DefectFormModal';
 import { ActivityLogsView } from './components/ActivityLogsView';
+import { ProjectConfigurationsView } from './components/ProjectConfigurationsView';
 import { SettingsModal } from './components/SettingsModal';
 import { ProfileModal } from './components/ProfileModal';
 import { Chatbot } from './components/Chatbot';
@@ -22,7 +23,7 @@ import { Plus, Download, Upload } from 'lucide-react';
 import Papa from 'papaparse';
 
 const AppContent = () => {
-  const { defects, setDefects, auditTrail, networkConfig, socket, authStatus } = useAppContext();
+  const { defects, setDefects, auditTrail, networkConfig, socket, authStatus, projects, addProject, filterProject } = useAppContext();
   const [activeView, setActiveView] = useState('dashboard');
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(true);
   const [selectedDefect, setSelectedDefect] = useState<Defect | undefined>(undefined);
@@ -96,7 +97,7 @@ const AppContent = () => {
             }
             
             const rowProj = row[3] && row[3].trim() !== '' ? row[3].trim() : fallbackProject;
-            if (rowProj && !projects.includes(rowProj)) {
+            if (rowProj && !projects.find(p => p.name === rowProj)) {
               addProject(rowProj);
               if (socket) socket.emit('add_project', rowProj);
             }
@@ -144,6 +145,7 @@ const AppContent = () => {
       case 'table': return <TableView onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
       case 'dashboard': return <DashboardView />;
       case 'activity': return <ActivityLogsView />;
+      case 'projects': return <ProjectConfigurationsView />;
       default: return <KanbanBoard onRowClick={(d) => { setSelectedDefect(d); setIsFormOpen(true); }} />;
     }
   };
@@ -163,7 +165,7 @@ const AppContent = () => {
       <div className="flex items-center justify-between shrink-0 flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">
-            {activeView === 'kanban' ? 'Kanban Board' : activeView === 'table' ? 'Issues Registry' : activeView === 'activity' ? 'Activity Logs' : 'Project Health Overview'}
+            {activeView === 'projects' ? 'Project Configurations' : activeView === 'kanban' ? 'Kanban Board' : activeView === 'table' ? 'Issues Registry' : activeView === 'activity' ? 'Activity Logs' : 'Project Health Overview'}
           </h2>
           <p className="text-sm text-slate-500">Monitoring defects across all enterprise platforms</p>
         </div>
@@ -177,7 +179,7 @@ const AppContent = () => {
           />
           <button
             onClick={handleDownloadTemplate}
-            className="px-3 py-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+            className="px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Template
@@ -185,44 +187,41 @@ const AppContent = () => {
           <button
             onClick={() => {
               if (projects.length === 0) {
-                const newProj = window.prompt("Please add a project before importing defects:");
-                if (newProj && newProj.trim()) {
-                  addProject(newProj.trim());
-                  if (socket) socket.emit('add_project', newProj.trim());
-                  // small timeout to ensure state update if needed before click
-                  setTimeout(() => fileInputRef.current?.click(), 100);
-                }
+                alert("There are no Projects. Please add a project to continue.");
+                setActiveView('projects');
               } else {
                 fileInputRef.current?.click();
               }
             }}
-            className="px-3 py-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+            className="px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
           >
             <Upload className="w-4 h-4" />
             Import CSV
           </button>
           <button
-            onClick={() => exportToExcel(defects, auditTrail)}
-            className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+            onClick={() => {
+              if (projects.length === 0) {
+                alert("There are no Projects. Please add a project to continue.");
+                setActiveView('projects');
+              } else {
+                exportToExcel(defects, auditTrail);
+              }
+            }}
+            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50 transition-colors"
           >
             Export Excel
           </button>
           <button
-            onClick={() => { 
+            onClick={() => {
               if (projects.length === 0) {
-                const newProj = window.prompt("Please add a project before creating a defect:");
-                if (newProj && newProj.trim()) {
-                  addProject(newProj.trim());
-                  if (socket) socket.emit('add_project', newProj.trim());
-                  setSelectedDefect(undefined); 
-                  setIsFormOpen(true);
-                }
+                alert("There are no Projects. Please add a project to continue.");
+                setActiveView('projects');
               } else {
                 setSelectedDefect(undefined); 
                 setIsFormOpen(true);
               }
             }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-1"
+            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-1"
           >
             <Plus className="w-4 h-4" />
             New Defect

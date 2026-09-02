@@ -102,7 +102,7 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
               className="text-xs border border-slate-200 rounded p-1 bg-white focus:outline-none text-slate-600"
             >
               <option value="">Move to Project...</option>
-              {projects.map(p => <option key={p} value={p}>{p}</option>)}
+              {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
             </select>
             <button 
               onClick={handleBulkUpdate}
