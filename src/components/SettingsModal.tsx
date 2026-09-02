@@ -3,7 +3,7 @@ import { X, Shield, Users, Copy, Check, Cpu, FolderGit2, Edit2, Check as CheckIc
 import { useAppContext } from '../context/AppContext';
 import { AIProvider } from '../types';
 
-export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
+export const SettingsModal = ({ onClose, onNavigateToProjects }: { onClose: () => void, onNavigateToProjects?: () => void }) => {
   const { users, projects, socket, networkConfig, aiConfig, setAiConfig } = useAppContext();
 
 
@@ -71,134 +71,77 @@ export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 shrink-0">
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-indigo-600" />
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.08)] w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-5 border-b border-ink-faint shrink-0" style={{ height: '50px' }}>
+          <h2 className="text-[14px] font-bold tracking-tight text-ink flex items-center gap-2">
+            <Shield className="w-5 h-5 text-ink" />
             Workspace Settings
           </h2>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={onClose} className="p-2 text-ink-muted hover:text-ink hover:bg-black/5 rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
         
-        <div className="p-6 overflow-y-auto space-y-8">
+        <div className="p-4 overflow-y-auto space-y-5">
           
           {networkConfig?.isMaster && (
             <div>
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">Invite Team Members</h3>
-              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-between">
+              <h3 className="text-[10px] font-bold text-ink uppercase tracking-wider mb-2">Invite Team Members</h3>
+              <div className="p-3 bg-bg-base border border-ink-faint rounded-[12px] flex items-center justify-between" style={{ borderWidth: '0.8px' }}>
                 <div>
-                  <div className="text-xs text-indigo-600 font-semibold mb-1">WORKSPACE INVITE CODE</div>
-                  <div className="text-2xl font-mono font-bold text-indigo-900 tracking-widest">{networkConfig.inviteCode}</div>
+                  <div className="text-[10px] text-ink font-semibold mb-0.5">WORKSPACE INVITE CODE</div>
+                  <div className="text-lg font-mono font-bold text-ink tracking-widest">{networkConfig.inviteCode}</div>
                 </div>
                 <button 
                   onClick={handleCopy}
-                  className="p-2 bg-white text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200 shadow-sm"
+                  className="p-1.5 bg-white text-ink hover:bg-black/5 rounded-[12px] transition-colors border border-ink-faint shadow-sm"
                 >
-                  {copied ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5" />}
+                  {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
             </div>
           )}
 
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <FolderGit2 className="w-4 h-4 text-slate-500" />
-              Workspace Projects ({projects.length})
-            </h3>
-            <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 bg-slate-50 mb-6">
-              {projects.map(project => (
-                <div key={project} className="p-3 flex items-center justify-between bg-white first:rounded-t-lg last:rounded-b-lg">
-                  {editingProject?.old === project ? (
-                    <div className="flex items-center gap-2 w-full">
-                      <input
-                        type="text"
-                        value={editingProject.new}
-                        onChange={(e) => setEditingProject({...editingProject, new: e.target.value})}
-                        className="flex-1 bg-slate-50 border border-indigo-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        autoFocus
-                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateProject()}
-                      />
-                      <button onClick={handleUpdateProject} className="p-1 text-green-600 hover:bg-green-50 rounded">
-                        <CheckIcon className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setEditingProject(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="text-sm font-semibold text-slate-800">{project}</div>
-                      {networkConfig?.isMaster && (
-                        <button onClick={() => setEditingProject({old: project, new: project})} className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-              {networkConfig?.isMaster && (
-                <div className="p-3 flex items-center gap-2 bg-slate-50 rounded-b-lg">
-                  <input
-                    type="text"
-                    value={newProject}
-                    onChange={(e) => setNewProject(e.target.value)}
-                    placeholder="New project name..."
-                    className="flex-1 bg-white border border-slate-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddProject()}
-                  />
-                  <button
-                    onClick={handleAddProject}
-                    disabled={!newProject.trim() || projects.includes(newProject.trim())}
-                    className="bg-indigo-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    Add
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          
 
           <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Users className="w-4 h-4 text-slate-500" />
+            <h3 className="text-[10px] font-bold text-ink uppercase tracking-wider mb-2 flex items-center gap-2">
+              <Users className="w-3 h-3 text-ink-muted" />
               Whitelisted Users ({users.length})
             </h3>
-            <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 bg-slate-50">
+            <div className="border border-ink-faint rounded-[12px] divide-y divide-ink-faint bg-bg-base" style={{ borderWidth: '0.8px' }}>
               {users.map(user => (
-                <div key={user.id} className="p-3 flex items-center justify-between bg-white first:rounded-t-lg last:rounded-b-lg">
+                <div key={user.id} className="p-2 flex items-center justify-between bg-white first:rounded-t-lg last:rounded-b-lg">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600 border border-slate-200">
+                    <div className="w-6 h-6 rounded-full bg-black/5 flex items-center justify-center text-xs font-bold text-ink border border-ink-faint" style={{ borderWidth: '0.8px' }}>
                       {user.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-slate-800">{user.name}</div>
-                      <div className="text-xs text-slate-500">{user.department}</div>
+                      <div className="text-[11px] font-semibold text-ink">{user.name}</div>
+                      <div className="text-[10px] text-ink-muted">{user.department}</div>
                     </div>
                   </div>
                 </div>
               ))}
               {users.length === 0 && (
-                <div className="p-4 text-sm text-slate-500 text-center">No users registered yet.</div>
+                <div className="p-3 text-[11px] text-ink-muted text-center">No users registered yet.</div>
               )}
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-slate-500" />
+            <h3 className="text-[10px] font-bold text-ink uppercase tracking-wider mb-2 flex items-center gap-2">
+              <Cpu className="w-3 h-3 text-ink-muted" />
               AI Configuration
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Provider</label>
+                <label className="block text-[10px] font-semibold text-ink mb-1">Provider</label>
                 <select 
                   value={provider} 
                   onChange={handleProviderChange}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-bg-base border border-ink-faint rounded-[12px] px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-ink" style={{ borderWidth: '0.8px' }}
                 >
                   <option value="gemini">Google Gemini</option>
                   <option value="openai">OpenAI</option>
@@ -208,22 +151,22 @@ export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">API Key</label>
+                <label className="block text-[10px] font-semibold text-ink mb-1">API Key</label>
                 <input 
                   type="password" 
                   value={apiKey} 
                   onChange={e => setApiKey(e.target.value)}
                   placeholder="Enter API Key"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-bg-base border border-ink-faint rounded-[12px] px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-ink" style={{ borderWidth: '0.8px' }}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Model Name</label>
+                <label className="block text-[10px] font-semibold text-ink mb-1">Model Name</label>
                 <select 
                   value={model} 
                   onChange={e => setModel(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-bg-base border border-ink-faint rounded-[12px] px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-ink" style={{ borderWidth: '0.8px' }}
                 >
                   {availableModels.length === 0 ? (
                     <option value={model || ""}>{model || "-- Empty (Test Connection to Load) --"}</option>
@@ -237,13 +180,13 @@ export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
 
               {provider === 'custom' && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Base URL</label>
+                  <label className="block text-[10px] font-semibold text-ink mb-1">Base URL</label>
                   <input 
                     type="text" 
                     value={baseUrl} 
                     onChange={e => setBaseUrl(e.target.value)}
                     placeholder="e.g. http://localhost:11434/v1"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-bg-base border border-ink-faint rounded-[12px] px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-ink" style={{ borderWidth: '0.8px' }}
                   />
                 </div>
               )}
@@ -253,13 +196,13 @@ export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                   type="button" 
                   onClick={handleTestConnection} 
                   disabled={testStatus === 'testing' || !apiKey}
-                  className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-sm transition-colors border border-slate-200 disabled:opacity-50"
+                  className="w-full py-1.5 bg-black/5 hover:bg-black/10 text-ink font-medium rounded-[12px] text-xs transition-colors border border-ink-faint disabled:opacity-50" style={{ borderWidth: '0.8px' }}
                 >
                   {testStatus === 'testing' ? 'Testing Connection...' : 'Test Connection & Load Models'}
                 </button>
                 
                 {testMessage && (
-                  <div className={`text-xs p-2 rounded-lg ${testStatus === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                  <div className={`text-xs p-2 rounded-[16px] ${testStatus === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                     {testMessage}
                   </div>
                 )}
@@ -267,19 +210,19 @@ export const SettingsModal = ({ onClose }: { onClose: () => void }) => {
             </div>
           </div>
 
-          <div className="p-4 bg-green-50 text-green-800 rounded-lg border border-green-200">
-            <h3 className="font-bold mb-1">Local Encryption Active</h3>
-            <p className="text-sm">
+          <div className="p-3 bg-green-50 text-green-800 rounded-[12px] border border-green-200">
+            <h3 className="text-[11px] font-bold mb-0.5">Local Encryption Active</h3>
+            <p className="text-[10px] leading-relaxed">
               Your defect data is encrypted at rest using AES-256-CBC, and your local profile is secured with the native Web Crypto API (AES-GCM). Master keys are kept locally, ensuring no cloud dependency.
             </p>
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 shrink-0">
-          <button type="button" onClick={onClose} className="px-6 py-2 bg-white text-slate-700 font-medium hover:bg-slate-100 rounded-lg shadow-sm border border-slate-200 transition-colors flex items-center gap-2">
+        <div className="border-t border-ink-faint flex items-center justify-center gap-3" style={{ marginTop: '2px', paddingTop: '23px', paddingBottom: '23px' }}>
+          <button type="button" onClick={onClose} className="bg-white border border-ink-faint text-slate-700 text-[10px] font-medium rounded-full flex items-center justify-center hover:bg-slate-50 transition-colors" style={{ height: '29.5875px', width: '110.788px', lineHeight: '8px', borderWidth: '0.8px' }}>
             Cancel
           </button>
-          <button type="button" onClick={handleSaveAi} className="px-6 py-2 bg-indigo-600 text-white font-medium hover:bg-indigo-700 rounded-lg shadow-sm transition-colors flex items-center gap-2">
+          <button type="button" onClick={handleSaveAi} className="bg-ink text-white text-[10px] font-medium rounded-full hover:opacity-90 transition-colors flex items-center justify-center" style={{ height: '29.5875px', width: '110.788px', lineHeight: '8px', borderWidth: '0.8px' }}>
             Save
           </button>
         </div>

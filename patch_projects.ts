@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import fs from 'fs';
+let content = fs.readFileSync('src/components/ProjectConfigurationsView.tsx', 'utf-8');
+
+const updatedProjects = `import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { FolderGit2, Trash2, Edit2, Check, X, ArrowLeft } from 'lucide-react';
 import { Project } from '../types';
@@ -37,17 +40,15 @@ export const ProjectConfigurationsView = () => {
   if (selectedProject) {
     const projDefects = filteredDefects.filter(d => d.project === selectedProject.name);
     return (
-      <div className="flex flex-col w-full">
-        <div className="p-8 border-b border-ink-faint">
+      <div className="flex flex-col h-full bg-white rounded-[24px]">
+        <div className="p-10 border-b border-ink-faint">
           <button onClick={() => setSelectedProject(null)} className="flex items-center gap-2 text-ink-muted hover:text-ink mb-6 transition-colors font-medium text-sm">
             <ArrowLeft className="w-4 h-4" /> Back to Projects
           </button>
           <div className="flex items-center justify-between">
-            <div className="group relative w-max">
-              <h3 className="font-sans text-[21px] font-bold tracking-tight mb-1 cursor-help">{selectedProject.name}</h3>
-              <div className="absolute left-0 top-full mt-2 px-3 py-2 bg-ink text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap shadow-md z-10 transition-opacity">
-                ID: {selectedProject.id}
-              </div>
+            <div>
+              <h3 className="font-serif text-[1.75rem] mb-2">{selectedProject.name}</h3>
+              <p className="text-[0.85rem] text-ink-muted leading-[1.4] max-w-[400px]">ID: {selectedProject.id}</p>
             </div>
             <div className="flex gap-4 items-center">
               <input 
@@ -55,7 +56,7 @@ export const ProjectConfigurationsView = () => {
                 value={editingName} 
                 onChange={(e) => setEditingName(e.target.value)} 
                 placeholder={selectedProject.name}
-                className="border-[0.8px] border-solid border-ink-faint rounded-[2.68px] px-2 pt-[3px] pb-[4px] text-[14px] leading-[11px] font-bold text-left w-[240px] outline-none transition-colors focus:border-ink bg-transparent"
+                className="border-none border-b-[1.5px] border-ink-faint py-2 text-base w-[240px] outline-none transition-colors focus:border-ink bg-transparent"
               />
               <button 
                 onClick={handleUpdate}
@@ -69,10 +70,10 @@ export const ProjectConfigurationsView = () => {
         </div>
 
         <div className="p-10">
-          <h3 className="text-xs font-bold text-ink uppercase tracking-wider mb-4">Project Stats</h3>
+          <h3 className="text-lg font-medium text-ink mb-4">Project Stats</h3>
           <div className="flex justify-between items-center bg-bg-base p-6 rounded-[16px] border border-ink-faint max-w-sm">
             <span className="text-ink-muted font-medium text-sm">Total Defects</span>
-            <span className="text-2xl font-sans font-bold text-ink">{projDefects.length}</span>
+            <span className="text-2xl font-serif font-bold text-ink">{projDefects.length}</span>
           </div>
         </div>
       </div>
@@ -80,13 +81,11 @@ export const ProjectConfigurationsView = () => {
   }
 
   return (
-    <div className="flex flex-col w-full">
-      <div className="h-[60px] pl-[32px] pr-8 flex justify-between items-center border-b border-ink-faint text-left">
-        <div className="group relative w-max">
-          <h3 className="font-sans text-[14px] font-bold tracking-tight mb-0 cursor-help">Project Configurations</h3>
-          <div className="absolute left-0 top-full mt-2 px-3 py-2 bg-ink text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap shadow-md z-10 transition-opacity">
-            Monitoring defects across all enterprise platforms. Manage workspace projects and identifiers below.
-          </div>
+    <div className="flex flex-col h-full bg-white rounded-[24px]">
+      <div className="p-10 flex justify-between items-start border-b border-ink-faint">
+        <div className="max-w-[400px]">
+          <h3 className="font-serif text-[1.75rem] mb-2">Project Configurations</h3>
+          <p className="text-[0.85rem] text-ink-muted leading-[1.4]">Monitoring defects across all enterprise platforms. Manage workspace projects and identifiers below.</p>
         </div>
         
         <div className="flex gap-4 items-center">
@@ -96,25 +95,25 @@ export const ProjectConfigurationsView = () => {
             onChange={(e) => setNewProjectName(e.target.value)} 
             onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
             placeholder="Project name" 
-            className="border-[0.8px] border-solid border-ink-faint rounded-[2.68px] px-2 pt-[3px] pb-[4px] text-[14px] leading-[11px] font-bold text-left w-[240px] outline-none transition-colors focus:border-ink bg-transparent"
+            className="border-none border-b-[1.5px] border-ink-faint py-2 text-base w-[240px] outline-none transition-colors focus:border-ink bg-transparent"
           />
           <button 
             onClick={handleAdd}
             disabled={!newProjectName.trim() || projects.some(p => p.name === newProjectName.trim())}
-            className="px-[20px] h-[30px] leading-[11px] bg-ink text-white rounded-full font-medium text-[12px] hover:opacity-90 disabled:opacity-50"
+            className="px-6 py-2.5 bg-ink text-white rounded-full font-medium text-sm hover:opacity-90 disabled:opacity-50"
           >
             Add Project
           </button>
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto">
+      <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th className="text-left px-10 py-4 text-[10px] leading-[12.8px] uppercase tracking-[0.15em] text-ink-muted border-b border-ink-faint">Project Detail</th>
-              <th className="text-left px-10 py-4 text-[10px] leading-[12.8px] uppercase tracking-[0.15em] text-ink-muted border-b border-ink-faint">Identity</th>
-              <th className="text-right px-10 py-4 text-[10px] leading-[12.8px] uppercase tracking-[0.15em] text-ink-muted border-b border-ink-faint">Control</th>
+              <th className="text-left px-10 py-4 text-[0.7rem] uppercase tracking-[0.15em] text-ink-muted border-b border-ink-faint">Project Detail</th>
+              <th className="text-left px-10 py-4 text-[0.7rem] uppercase tracking-[0.15em] text-ink-muted border-b border-ink-faint">Identity</th>
+              <th className="text-right px-10 py-4 text-[0.7rem] uppercase tracking-[0.15em] text-ink-muted border-b border-ink-faint">Control</th>
             </tr>
           </thead>
           <tbody>
@@ -154,3 +153,6 @@ export const ProjectConfigurationsView = () => {
     </div>
   );
 };
+`;
+
+fs.writeFileSync('src/components/ProjectConfigurationsView.tsx', updatedProjects);

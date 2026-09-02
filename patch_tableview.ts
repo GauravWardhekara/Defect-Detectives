@@ -1,16 +1,23 @@
 import fs from 'fs';
 
 let content = fs.readFileSync('src/components/TableView.tsx', 'utf-8');
-const target = `<div className="flex items-center gap-4">
-          <div className="text-sm font-semibold text-slate-700">Active Defects</div>
-          <div className="flex items-center gap-2">
-            <select className="text-xs border border-slate-200 rounded p-1 bg-white text-slate-600 focus:outline-none">
-              <option>All Projects</option>
-            </select>
-          </div>
-        </div>`;
-const replacement = `<div className="flex items-center gap-4">
-          <div className="text-sm font-semibold text-slate-700">Active Defects</div>
-        </div>`;
-content = content.replace(target, replacement);
+
+// Colors
+content = content.replace(/bg-slate-100/g, 'bg-bg-base');
+content = content.replace(/bg-slate-50/g, 'bg-black/5');
+content = content.replace(/text-slate-800/g, 'text-ink');
+content = content.replace(/text-slate-700/g, 'text-ink');
+content = content.replace(/text-slate-600/g, 'text-ink');
+content = content.replace(/text-slate-500/g, 'text-ink-muted');
+content = content.replace(/text-slate-400/g, 'text-ink-muted');
+content = content.replace(/border-slate-300/g, 'border-ink-faint bg-bg-base');
+content = content.replace(/border-slate-200/g, 'border-ink-faint');
+
+content = content.replace(/text-indigo-700/g, 'text-ink');
+content = content.replace(/text-indigo-600/g, 'text-ink');
+content = content.replace(/bg-indigo-600/g, 'bg-ink');
+content = content.replace(/bg-indigo-50\/30/g, 'bg-black/5');
+content = content.replace(/focus:ring-indigo-500\/20/g, 'focus:ring-ink');
+content = content.replace(/focus:ring-indigo-500/g, 'focus:ring-ink');
+
 fs.writeFileSync('src/components/TableView.tsx', content);

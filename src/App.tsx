@@ -16,14 +16,15 @@ import { SettingsModal } from './components/SettingsModal';
 import { ProfileModal } from './components/ProfileModal';
 import { Chatbot } from './components/Chatbot';
 import { AppProvider, useAppContext } from './context/AppContext';
+import { CustomSelect } from './components/CustomSelect';
 import { exportToExcel } from './lib/export';
 import { rowsToDefects } from './lib/googleSheets'; // Keep for parsing logic, or we can use Papa parse directly
-import { Defect } from './types';
+import { Defect, Status } from './types';
 import { Plus, Download, Upload } from 'lucide-react';
 import Papa from 'papaparse';
 
 const AppContent = () => {
-  const { defects, setDefects, auditTrail, networkConfig, socket, authStatus, projects, addProject, filterProject } = useAppContext();
+  const { defects, setDefects, auditTrail, networkConfig, socket, authStatus, projects, addProject, filterProject, setFilterProject, filterStatus, setFilterStatus, searchQuery, setSearchQuery } = useAppContext();
   const [activeView, setActiveView] = useState('dashboard');
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(true);
   const [selectedDefect, setSelectedDefect] = useState<Defect | undefined>(undefined);
@@ -162,14 +163,15 @@ const AppContent = () => {
       isSyncing={false}
       lastSynced={new Date()}
     >
-      <div className="flex items-center justify-between shrink-0 flex-wrap gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">
-            {activeView === 'projects' ? 'Project Configurations' : activeView === 'kanban' ? 'Kanban Board' : activeView === 'table' ? 'Issues Registry' : activeView === 'activity' ? 'Activity Logs' : 'Project Health Overview'}
-          </h2>
-          <p className="text-sm text-slate-500">Monitoring defects across all enterprise platforms</p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex justify-between items-center shrink-0">
+        <input 
+          type="text" 
+          className="bg-ink-faint border-none px-4 py-1.5 rounded-full font-sans w-[240px] text-xs outline-none" 
+          placeholder="Search across all platforms..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <div className="flex gap-3">
           <input 
             type="file" 
             accept=".csv" 
@@ -177,14 +179,19 @@ const AppContent = () => {
             onChange={handleImportCSV} 
             className="hidden" 
           />
-          <button
-            onClick={handleDownloadTemplate}
-            className="px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Template
-          </button>
-          <button
+          <CustomSelect 
+             value={filterProject} 
+             onChange={val => setFilterProject(val)} 
+             options={[{value: 'All', label: 'Projects (All)'}, ...projects.map(p => ({value: p.name, label: p.name}))]}
+             className="px-4 py-1.5 rounded-full border border-ink bg-transparent font-medium text-xs cursor-pointer hover:bg-black/5 outline-none min-w-[140px]"
+          />
+          <CustomSelect 
+             value={filterStatus} 
+             onChange={val => setFilterStatus(val)} 
+             options={[{value: 'All', label: 'Status (All)'}, ...Object.values(Status).map(s => ({value: s, label: s}))]}
+             className="px-4 py-1.5 rounded-full border border-ink bg-transparent font-medium text-xs cursor-pointer hover:bg-black/5 outline-none min-w-[130px]"
+          />
+          <button 
             onClick={() => {
               if (projects.length === 0) {
                 alert("There are no Projects. Please add a project to continue.");
@@ -192,26 +199,12 @@ const AppContent = () => {
               } else {
                 fileInputRef.current?.click();
               }
-            }}
-            className="px-3 py-1.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+            }} 
+            className="px-4 py-1.5 rounded-full border border-ink bg-transparent font-medium text-xs cursor-pointer hover:bg-black/5"
           >
-            <Upload className="w-4 h-4" />
-            Import CSV
+            Import
           </button>
-          <button
-            onClick={() => {
-              if (projects.length === 0) {
-                alert("There are no Projects. Please add a project to continue.");
-                setActiveView('projects');
-              } else {
-                exportToExcel(defects, auditTrail);
-              }
-            }}
-            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-50 transition-colors"
-          >
-            Export Excel
-          </button>
-          <button
+          <button 
             onClick={() => {
               if (projects.length === 0) {
                 alert("There are no Projects. Please add a project to continue.");
@@ -220,16 +213,17 @@ const AppContent = () => {
                 setSelectedDefect(undefined); 
                 setIsFormOpen(true);
               }
-            }}
-            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-1"
+            }} 
+            className="px-4 py-1.5 rounded-full border border-ink bg-ink text-white font-medium text-xs cursor-pointer hover:opacity-90"
           >
-            <Plus className="w-4 h-4" />
             New Defect
           </button>
         </div>
       </div>
-
-      {renderView()}
+      
+      <div className="flex-1 overflow-x-auto min-h-0 relative bg-white border border-ink-faint rounded-[24px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col">
+        {renderView()}
+      </div>
 
       {isFormOpen && (
         <DefectFormModal 
@@ -238,7 +232,13 @@ const AppContent = () => {
         />
       )}
       {isSettingsOpen && (
-        <SettingsModal onClose={() => setIsSettingsOpen(false)} />
+        <SettingsModal 
+          onClose={() => setIsSettingsOpen(false)} 
+          onNavigateToProjects={() => {
+            setIsSettingsOpen(false);
+            setActiveView('projects');
+          }}
+        />
       )}
       {isProfileOpen && (
         <ProfileModal onClose={() => setIsProfileOpen(false)} />
@@ -247,7 +247,6 @@ const AppContent = () => {
       {isConnectModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="relative w-full max-w-md">
-            {/* Close button */}
             {networkConfig && socket && (
               <button 
                 onClick={() => setIsConnectModalOpen(false)}

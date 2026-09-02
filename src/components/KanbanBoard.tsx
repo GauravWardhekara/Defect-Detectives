@@ -34,10 +34,10 @@ export const KanbanBoard = ({ onRowClick }: { onRowClick: (defect: Defect) => vo
           const columnDefects = defects.filter(d => d.status === column.id);
           
           return (
-            <div key={column.id} className="w-80 shrink-0 flex flex-col bg-slate-100 rounded-xl">
-              <div className="p-3 border-b border-slate-200 flex justify-between items-center bg-slate-200/50 rounded-t-xl">
-                <h3 className="font-semibold text-slate-700 text-sm">{column.title}</h3>
-                <span className="bg-slate-300 text-slate-700 text-xs px-2 py-0.5 rounded-full font-medium">
+            <div key={column.id} className="w-80 shrink-0 flex flex-col bg-bg-base border border-ink-faint rounded-[24px]">
+              <div className="p-3 border-b border-ink-faint flex justify-between items-center border-b border-ink-faint bg-transparent rounded-t-[24px] px-6 py-5">
+                <h3 className="font-medium uppercase tracking-[0.1em] font-mono text-[0.7rem] text-ink">{column.title}</h3>
+                <span className="font-mono text-xs text-ink-muted">
                   {columnDefects.length}
                 </span>
               </div>
@@ -47,8 +47,8 @@ export const KanbanBoard = ({ onRowClick }: { onRowClick: (defect: Defect) => vo
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`flex-1 p-3 overflow-y-auto min-h-[150px] transition-colors ${
-                      snapshot.isDraggingOver ? 'bg-indigo-50/50' : ''
+                    className={`p-4 min-h-[150px] transition-colors ${
+                      snapshot.isDraggingOver ? 'bg-black/5' : ''
                     }`}
                   >
                     {columnDefects.map((defect, index) => (
@@ -60,19 +60,19 @@ export const KanbanBoard = ({ onRowClick }: { onRowClick: (defect: Defect) => vo
                             {...provided.dragHandleProps}
                             style={provided.draggableProps.style}
                             onClick={() => onRowClick(defect)}
-                            className={`p-4 mb-3 bg-white rounded-lg border shadow-sm cursor-pointer transition-shadow transition-colors duration-200 ${
-                              snapshot.isDragging ? 'shadow-lg border-indigo-400' : 'border-slate-200 hover:border-indigo-300'
+                            className={`p-4 mb-3 bg-white rounded-[16px] border shadow-[0_4px_20px_rgba(0,0,0,0.02)] cursor-pointer transition-shadow transition-colors duration-200 ${
+                              snapshot.isDragging ? 'shadow-xl border-ink scale-[1.02]' : 'border-ink-faint hover:border-ink'
                             }`}
                           >
                             <div className="flex justify-between items-start mb-2">
-                              <span className="text-xs font-semibold text-slate-400">{defect.id}</span>
+                              <span className="text-xs font-semibold text-ink-muted">{defect.id}</span>
                               <div className="flex gap-1">
                                 <PriorityBadge priority={defect.priority} />
                               </div>
                             </div>
-                            <h4 className="font-medium text-slate-800 text-sm mb-2 leading-snug">{defect.title}</h4>
+                            <h4 className="font-sans font-bold text-[1.1rem] tracking-tight text-ink mb-2 leading-snug">{defect.title}</h4>
                             {defect.module && (
-                              <div className="text-[10px] text-slate-500 font-medium mb-2 truncate">
+                              <div className="text-[10px] text-ink-muted font-medium mb-2 truncate">
                                 {defect.module}
                               </div>
                             )}
@@ -80,12 +80,12 @@ export const KanbanBoard = ({ onRowClick }: { onRowClick: (defect: Defect) => vo
                               <SeverityBadge severity={defect.severity} />
                               <div className="flex items-center gap-2">
                                 {defect.comments && (
-                                  <span className="text-xs text-slate-400" title={defect.comments}>💭</span>
+                                  <span className="text-xs text-ink-muted" title={defect.comments}>💭</span>
                                 )}
-                                <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-medium border border-slate-200" title="Reported Version">
+                                <span className="text-[10px] bg-bg-base px-1.5 py-0.5 rounded text-ink-muted font-medium border border-slate-200" title="Reported Version">
                                   {defect.reportedVersion || 'v?'}
                                 </span>
-                                <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700" title={defect.assignee}>
+                                <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-ink" title={defect.assignee}>
                                   {defect.assignee.charAt(0)}
                                 </div>
                               </div>

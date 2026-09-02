@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { CustomSelect } from './CustomSelect';
 import { PriorityBadge, SeverityBadge, StatusBadge } from './Badges';
 import { Defect, Status, Priority, Severity } from '../types';
 
@@ -63,70 +64,63 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
   };
 
   return (
-    <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50/50 gap-4 shrink-0">
+    <div className="flex-1 bg-white rounded-xl border border-ink-faint shadow-sm flex flex-col overflow-hidden">
+      <div className="px-10 py-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-black/5/50 gap-4 shrink-0">
         <div className="flex items-center gap-4">
-          <div className="text-sm font-semibold text-slate-700">Active Defects</div>
+          <div className="text-sm font-semibold text-ink">Active Defects</div>
         </div>
         
         {selectedIds.length > 0 ? (
-          <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg w-full sm:w-auto">
-            <span className="text-xs font-semibold text-indigo-700 mr-2">{selectedIds.length} selected</span>
-            <select 
+          <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-[12px] w-full sm:w-auto">
+            <span className="text-xs font-semibold text-ink mr-2">{selectedIds.length} selected</span>
+            <CustomSelect 
               value={bulkStatus}
-              onChange={(e) => setBulkStatus(e.target.value as Status)}
-              className="text-xs border border-slate-200 rounded p-1 bg-white focus:outline-none text-slate-600"
-            >
-              <option value="">Update Status...</option>
-              {Object.values(Status).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select 
+              onChange={(val) => setBulkStatus(val as Status)}
+              options={[{value: '', label: 'Update Status...'}, ...Object.values(Status).map(s => ({value: s, label: s}))]}
+              className="text-xs border border-ink-faint rounded-full px-3 py-1.5 bg-white text-ink min-w-[130px]"
+            />
+            <CustomSelect 
               value={bulkPriority}
-              onChange={(e) => setBulkPriority(e.target.value as Priority)}
-              className="text-xs border border-slate-200 rounded p-1 bg-white focus:outline-none text-slate-600"
-            >
-              <option value="">Update Priority...</option>
-              {Object.values(Priority).map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-            <select 
+              onChange={(val) => setBulkPriority(val as Priority)}
+              options={[{value: '', label: 'Update Priority...'}, ...Object.values(Priority).map(p => ({value: p, label: p}))]}
+              className="text-xs border border-ink-faint rounded-full px-3 py-1.5 bg-white text-ink min-w-[130px]"
+            />
+            <CustomSelect 
               value={bulkAssignee}
-              onChange={(e) => setBulkAssignee(e.target.value)}
-              className="text-xs border border-slate-200 rounded p-1 bg-white focus:outline-none text-slate-600"
-            >
-              <option value="">Assign To...</option>
-              {users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-            </select>
-            <select 
+              onChange={(val) => setBulkAssignee(val)}
+              options={[{value: '', label: 'Assign To...'}, ...users.map(u => ({value: u.name, label: u.name}))]}
+              className="text-xs border border-ink-faint rounded-full px-3 py-1.5 bg-white text-ink min-w-[110px]"
+            />
+            <CustomSelect 
               value={bulkProject}
-              onChange={(e) => setBulkProject(e.target.value)}
-              className="text-xs border border-slate-200 rounded p-1 bg-white focus:outline-none text-slate-600"
-            >
-              <option value="">Move to Project...</option>
-              {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-            </select>
+              onChange={(val) => setBulkProject(val)}
+              options={[{value: '', label: 'Move to Project...'}, ...projects.map(p => ({value: p.name, label: p.name}))]}
+              className="text-xs border border-ink-faint rounded-full px-3 py-1.5 bg-white text-ink min-w-[140px]"
+            />
             <button 
               onClick={handleBulkUpdate}
               disabled={!bulkStatus && !bulkPriority && !bulkAssignee && !bulkProject}
-              className="text-xs bg-indigo-600 text-white px-3 py-1 rounded font-medium disabled:opacity-50 transition-opacity"
+              className="text-xs bg-ink text-white px-3 py-1 rounded font-medium disabled:opacity-50 transition-opacity"
             >
               Apply
             </button>
           </div>
         ) : (
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <select
+            <CustomSelect 
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-600"
-            >
-              <option value="updatedAt">Last Updated</option>
-              <option value="createdAt">Created Date</option>
-              <option value="priority">Priority</option>
-              <option value="severity">Severity</option>
-            </select>
+              onChange={(val) => setSortBy(val)}
+              options={[
+                {value: 'updatedAt', label: 'Last Updated'},
+                {value: 'createdAt', label: 'Created Date'},
+                {value: 'priority', label: 'Priority'},
+                {value: 'severity', label: 'Severity'}
+              ]}
+              className="text-xs border border-ink-faint rounded-full px-3 py-1.5 bg-white text-ink min-w-[120px]"
+            />
             <button
               onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white hover:bg-slate-50 text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 flex items-center justify-center w-8 h-[30px]"
+              className="text-xs border border-ink-faint rounded-full px-3 py-1.5 bg-white hover:bg-black/5 text-ink focus:outline-none focus:ring-2 focus:ring-ink flex items-center justify-center w-8 h-[30px]"
               title={sortOrder === 'asc' ? 'Sort Ascending' : 'Sort Descending'}
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
@@ -135,30 +129,30 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
         )}
       </div>
       
-      <div className="flex-1 overflow-auto">
+      <div className="w-full overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[800px]">
-          <thead className="sticky top-0 bg-white border-b border-slate-200 z-10">
+          <thead className="sticky top-0 bg-white border-b border-ink-faint z-10">
             <tr>
-              <th className="px-6 py-3 w-10 text-center">
+              <th className="px-10 py-4 w-10 text-center">
                 <input 
                   type="checkbox" 
                   checked={filteredDefects.length > 0 && selectedIds.length === filteredDefects.length}
                   onChange={toggleSelectAll}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  className="rounded border-ink-faint bg-bg-base text-ink focus:ring-ink"
                 />
               </th>
-              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">ID</th>
-              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Issue & Description</th>
-              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Project</th>
-              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Severity / Priority</th>
-              <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assignee</th>
+              <th className="px-10 py-4 text-[10px] font-bold text-ink-muted uppercase tracking-wider">ID</th>
+              <th className="px-10 py-4 text-[10px] font-bold text-ink-muted uppercase tracking-wider">Issue & Description</th>
+              <th className="px-10 py-4 text-[10px] font-bold text-ink-muted uppercase tracking-wider">Project</th>
+              <th className="px-10 py-4 text-[10px] font-bold text-ink-muted uppercase tracking-wider">Status</th>
+              <th className="px-10 py-4 text-[10px] font-bold text-ink-muted uppercase tracking-wider">Severity / Priority</th>
+              <th className="px-10 py-4 text-[10px] font-bold text-ink-muted uppercase tracking-wider">Assignee</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filteredDefects.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-slate-500 text-sm">
+                <td colSpan={7} className="px-6 py-8 text-center text-ink-muted text-sm">
                   No defects found. Create one to get started.
                 </td>
               </tr>
@@ -166,43 +160,43 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
               <tr 
                 key={defect.id} 
                 onClick={() => onRowClick(defect)}
-                className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedIds.includes(defect.id) ? 'bg-indigo-50/30' : ''}`}
+                className={`hover:bg-black/5 transition-colors cursor-pointer ${selectedIds.includes(defect.id) ? 'bg-black/5' : ''}`}
               >
-                <td className="px-6 py-4 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                <td className="px-10 py-6 w-10 text-center" onClick={(e) => e.stopPropagation()}>
                   <input 
                     type="checkbox"
                     checked={selectedIds.includes(defect.id)}
                     onChange={(e) => toggleSelect(defect.id, e as any)}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-ink-faint bg-bg-base text-ink focus:ring-ink"
                   />
                 </td>
-                <td className="px-6 py-4 text-xs font-mono text-slate-500">{defect.id}</td>
-                <td className="px-6 py-4">
-                  <div className="text-sm font-medium text-slate-800">{defect.title}</div>
-                  <div className="text-xs text-slate-400 truncate w-48 mt-0.5">{defect.reportedVersion ? `Reported in: ${defect.reportedVersion}` : 'No version specified'}</div>
+                <td className="px-10 py-6 text-xs font-mono text-ink-muted">{defect.id}</td>
+                <td className="px-10 py-6 text-[0.95rem]">
+                  <div className="text-sm font-medium text-ink">{defect.title}</div>
+                  <div className="text-xs text-ink-muted truncate w-48 mt-0.5">{defect.reportedVersion ? `Reported in: ${defect.reportedVersion}` : 'No version specified'}</div>
                   {defect.comments && (
-                    <div className="text-[10px] text-slate-400 truncate w-48 mt-1 italic">💭 {defect.comments}</div>
+                    <div className="text-[10px] text-ink-muted truncate w-48 mt-1 italic">💭 {defect.comments}</div>
                   )}
                 </td>
-                <td className="px-6 py-4">
-                  <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase truncate max-w-[120px] inline-block">{defect.project}</span>
+                <td className="px-10 py-6 text-[0.95rem]">
+                  <span className="px-2 py-0.5 bg-bg-base text-ink rounded text-[10px] font-bold uppercase truncate max-w-[120px] inline-block">{defect.project}</span>
                   {defect.module && (
-                    <div className="text-[10px] text-slate-400 mt-1 font-medium">{defect.module}</div>
+                    <div className="text-[10px] text-ink-muted mt-1 font-medium">{defect.module}</div>
                   )}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-10 py-6 text-[0.95rem]">
                   <StatusBadge status={defect.status} />
                 </td>
-                <td className="px-6 py-4 flex flex-col items-start gap-1">
+                <td className="px-10 py-6 flex flex-col items-start gap-1">
                   <SeverityBadge severity={defect.severity} />
                   <PriorityBadge priority={defect.priority} />
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-10 py-6 text-[0.95rem]">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600 shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-ink shrink-0">
                       {defect.assignee.charAt(0)}
                     </div>
-                    <span className="text-xs text-slate-600 truncate max-w-[100px]">{defect.assignee}</span>
+                    <span className="text-xs text-ink truncate max-w-[100px]">{defect.assignee}</span>
                   </div>
                 </td>
               </tr>
@@ -211,10 +205,10 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
         </table>
       </div>
 
-      <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/30 shrink-0">
+      <div className="px-10 py-4 border-t border-slate-100 flex items-center justify-between text-xs text-ink-muted bg-black/5/30 shrink-0">
         <div>Showing {filteredDefects.length} active issue{filteredDefects.length !== 1 ? 's' : ''}</div>
         <div className="flex gap-1">
-          <button className="px-2 py-1 border border-slate-200 rounded hover:bg-white text-slate-600 font-medium">1</button>
+          <button className="px-2 py-1 border border-ink-faint rounded hover:bg-white text-ink font-medium">1</button>
         </div>
       </div>
     </div>

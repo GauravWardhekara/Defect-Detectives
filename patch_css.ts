@@ -1,5 +1,7 @@
-@import "tailwindcss";
+import fs from 'fs';
+let content = fs.readFileSync('src/index.css', 'utf-8');
 
+const themeDef = `
 @theme {
   --color-bg-base: #f8f7f4;
   --color-ink: #1a1a1c;
@@ -16,3 +18,10 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
 }
+`;
+
+if (!content.includes('--color-ink')) {
+  content = content + themeDef;
+}
+
+fs.writeFileSync('src/index.css', content);

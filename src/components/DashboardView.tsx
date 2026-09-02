@@ -67,19 +67,21 @@ export const DashboardView = () => {
   return (
     <div className="space-y-6 flex-1 overflow-y-auto pr-2 pb-10">
       {/* AI Insights Section */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-600" />
+      <div className="bg-bg-base border border-ink-faint rounded-[16px] p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="group relative w-max">
+            <h3 className="text-sm font-bold text-ink flex items-center gap-2 cursor-help uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-ink-muted" />
               AI Defect Insights
             </h3>
-            <p className="text-sm text-indigo-700 mt-1">Generate an automated summary of current project risks, trends, and root causes.</p>
+            <div className="absolute left-0 top-full mt-2 px-3 py-2 bg-ink text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap shadow-md z-10 transition-opacity">
+              Generate an automated summary of current project risks, trends, and root causes.
+            </div>
           </div>
           <button 
             onClick={generateInsights}
             disabled={isGenerating || defects.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 shrink-0"
+            className="flex items-center gap-2 px-4 py-1.5 bg-ink text-white rounded-full font-medium text-xs hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
           >
             {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             {isGenerating ? 'Analyzing Data...' : 'Generate Insights'}
@@ -87,7 +89,7 @@ export const DashboardView = () => {
         </div>
         
         {insights && (
-          <div className="mt-4 p-5 bg-white rounded-lg border border-indigo-50 shadow-sm text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="mt-4 p-4 bg-white rounded-[12px] border border-ink-faint shadow-sm text-ink text-sm leading-relaxed whitespace-pre-wrap">
             {insights}
           </div>
         )}
@@ -95,42 +97,42 @@ export const DashboardView = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Resolution Rate</div>
-          <div className="text-2xl font-bold text-slate-800">{resolutionRate}%</div>
+        <div className="bg-white p-4 rounded-[16px] border border-ink-faint shadow-sm">
+          <div className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-1">Resolution Rate</div>
+          <div className="text-2xl font-bold text-ink">{resolutionRate}%</div>
           <div className="text-[10px] text-green-600 mt-2 font-medium">Target: &gt;90% SLA</div>
         </div>
         
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">In-Flight Issues</div>
-          <div className="text-2xl font-bold text-slate-800">{inFlight}</div>
-          <div className="text-[10px] text-blue-600 mt-2 font-medium">Currently in development</div>
+        <div className="bg-white p-4 rounded-[16px] border border-ink-faint shadow-sm">
+          <div className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-1">In-Flight Issues</div>
+          <div className="text-2xl font-bold text-ink">{inFlight}</div>
+          <div className="text-[10px] text-ink-muted mt-2 font-medium">Currently in development</div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Active Blockers</div>
+        <div className="bg-white p-4 rounded-[16px] border border-ink-faint shadow-sm">
+          <div className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-1">Active Blockers</div>
           <div className="text-2xl font-bold text-red-600">{blockers}</div>
           <div className="w-full bg-slate-100 h-1 mt-3 rounded-full overflow-hidden">
             <div className="h-full bg-red-500" style={{ width: `${(blockers / (total || 1)) * 100}%` }}></div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Defects</div>
-          <div className="text-2xl font-bold text-slate-800">{total}</div>
+        <div className="bg-white p-4 rounded-[16px] border border-ink-faint shadow-sm">
+          <div className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-1">Total Defects</div>
+          <div className="text-2xl font-bold text-ink">{total}</div>
           <div className="flex -space-x-2 mt-2">
-            <div className="w-6 h-6 rounded-full border-2 border-white bg-indigo-200"></div>
-            <div className="w-6 h-6 rounded-full border-2 border-white bg-blue-200"></div>
+            <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-200"></div>
+            <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-300"></div>
             <div className="w-6 h-6 rounded-full border-2 border-white bg-green-200"></div>
-            <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[8px] font-bold text-slate-600">+{Math.max(0, total - 3)}</div>
+            <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[8px] font-bold text-ink">+{Math.max(0, total - 3)}</div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pipeline Distribution */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-800 mb-6">Pipeline Distribution</h3>
+        <div className="bg-white p-6 rounded-[16px] border border-ink-faint shadow-sm">
+          <h3 className="text-sm font-bold text-ink uppercase tracking-wider mb-6">Pipeline Distribution</h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -153,8 +155,8 @@ export const DashboardView = () => {
         </div>
 
         {/* Project Health */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-800 mb-6">Project Defect Volume</h3>
+        <div className="bg-white p-6 rounded-[16px] border border-ink-faint shadow-sm">
+          <h3 className="text-sm font-bold text-ink uppercase tracking-wider mb-6">Project Defect Volume</h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={projectData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
