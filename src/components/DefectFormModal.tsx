@@ -31,7 +31,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
 
   const handleAddNewProject = () => {
     const newProj = prompt('Enter new project name:');
-    if (newProj && newProj.trim() && !projects.includes(newProj.trim())) {
+    if (newProj && newProj.trim() && !projects.find(p => p.name === newProj.trim())) {
       addProject(newProj.trim());
       setFormData(prev => ({ ...prev, project: newProj.trim() }));
     }
@@ -57,7 +57,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
     existingDefect || {
       title: '',
       description: '',
-      project: filterProject !== 'All' ? filterProject : projects[0],
+      project: filterProject !== 'All' ? filterProject : (projects[0]?.name || ''),
       priority: Priority.MEDIUM,
       severity: Severity.MINOR,
       status: Status.OPEN,
@@ -131,10 +131,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
       return;
     }
 
-    if (!aiConfig?.apiKey) {
-      alert("Please configure your AI API key in the Workspace Settings first.");
-      return;
-    }
+
     
     setIsAnalyzing(true);
     try {
@@ -281,7 +278,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
                 <label className="block text-sm font-medium text-slate-700 mb-1">Project</label>
                 <div className="flex gap-2">
                   <select name="project" value={formData.project} onChange={handleChange} className="flex-1 px-4 py-2 border border-slate-300 rounded-lg">
-                    {projects.map(p => <option key={p} value={p}>{p}</option>)}
+                    {projects.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                   </select>
                   <button type="button" onClick={handleAddNewProject} className="p-2 border border-slate-300 rounded-lg text-slate-500 hover:bg-slate-100" title="Add New Project">
                     <Plus className="w-5 h-5" />

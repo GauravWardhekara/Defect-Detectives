@@ -25,7 +25,7 @@ interface ServerConfig {
   inviteCode: string;
   encryptionKey: string;
   users: Array<{ id: string; name: string; email: string; department: string }>;
-  projects?: string[];
+  projects?: { id: string; name: string }[];
 }
 
 let serverConfig: ServerConfig;
@@ -36,7 +36,21 @@ if (fs.existsSync(CONFIG_FILE)) {
     serverConfig.projects = [];
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverConfig, null, 2));
   } else {
-    serverConfig.projects = Array.from(new Set(serverConfig.projects));
+    let migrated = false;
+    serverConfig.projects = serverConfig.projects.map((p: any) => {
+      if (typeof p === 'string') {
+        migrated = true;
+        return { id: require('crypto').randomBytes(4).toString("hex"), name: p };
+      }
+      return p;
+    });
+    // Remove duplicates by name
+    const seen = new Set();
+    serverConfig.projects = serverConfig.projects.filter(p => {
+      if (seen.has(p.name)) return false;
+      seen.add(p.name);
+      return true;
+    });
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverConfig, null, 2));
   }
 } else {
@@ -237,17 +251,18 @@ async function startServer() {
 
       socket.on("add_project", (projectName: string) => {
         if (!serverConfig.projects) serverConfig.projects = [];
-        if (!serverConfig.projects.includes(projectName)) {
-          serverConfig.projects.push(projectName);
+        if (!serverConfig.projects.find(p => p.name === projectName)) {
+          serverConfig.projects.push({ id: require('crypto').randomBytes(4).toString("hex"), name: projectName });
           saveConfig();
           io.to(serverConfig.orgCode).emit("projects_updated", serverConfig.projects);
         }
       });
 
-      socket.on("delete_project", (projectName: string) => {
+      socket.on("delete_project", (projectId: string) => {
         if (!serverConfig.projects) return;
-        const idx = serverConfig.projects.indexOf(projectName);
+        const idx = serverConfig.projects.findIndex(p => p.id === projectId);
         if (idx !== -1) {
+          const projectName = serverConfig.projects[idx].name;
           serverConfig.projects.splice(idx, 1);
           saveConfig();
           io.to(serverConfig.orgCode).emit("projects_updated", serverConfig.projects);
@@ -262,11 +277,12 @@ async function startServer() {
         }
       });
 
-      socket.on("update_project", ({ oldName, newName }: { oldName: string, newName: string }) => {
+      socket.on("update_project", ({ id, newName }: { id: string, newName: string }) => {
         if (!serverConfig.projects) serverConfig.projects = [];
-        const idx = serverConfig.projects.indexOf(oldName);
-        if (idx !== -1 && newName && !serverConfig.projects.includes(newName)) {
-          serverConfig.projects[idx] = newName;
+        const idx = serverConfig.projects.findIndex(p => p.id === id);
+        if (idx !== -1 && newName && !serverConfig.projects.find(p => p.name === newName)) {
+          const oldName = serverConfig.projects[idx].name;
+          serverConfig.projects[idx].name = newName;
           saveConfig();
           io.to(serverConfig.orgCode).emit("projects_updated", serverConfig.projects);
           
@@ -399,7 +415,10 @@ async function startServer() {
 
   // AI Helper function
   async function generateAIContent(aiConfig: any, prompt: string, isJson: boolean = false, systemInstruction?: string, history: any[] = []) {
-    if (!aiConfig?.apiKey) throw new Error("Missing API Key");
+    let activeConfig = aiConfig;
+    if (!activeConfig?.apiKey) {
+      throw new Error("Missing API Key");
+    }
 
     if (aiConfig.provider === 'gemini') {
       const ai = new GoogleGenAI({ apiKey: aiConfig.apiKey });
@@ -490,8 +509,10 @@ async function startServer() {
   // AI Endpoints
   app.post("/api/models", async (req, res) => {
     try {
-      const { aiConfig } = req.body;
-      if (!aiConfig?.apiKey) throw new Error("Missing API Key");
+      let { aiConfig } = req.body;
+      if (!aiConfig?.apiKey) {
+        throw new Error("Missing API Key");
+      }
 
       let models: string[] = [];
 

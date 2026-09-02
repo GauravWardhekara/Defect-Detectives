@@ -77,7 +77,12 @@ export interface AppState {
   defects: Defect[];
   auditTrail: AuditEvent[];
   users: User[];
-  projects: string[];
+  projects: Project[];
   currentUser: User | null;
   aiConfig: AIConfig | null;
+}
+
+export interface Project {
+  id: string;
+  name: string;
 }
