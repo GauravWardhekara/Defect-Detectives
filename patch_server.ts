@@ -22,7 +22,7 @@ const newInitCode = `  if (!serverConfig.projects) {
     serverConfig.projects = serverConfig.projects.map((p: any) => {
       if (typeof p === 'string') {
         migrated = true;
-        return { id: require('crypto').randomBytes(4).toString("hex"), name: p };
+        return { id: crypto.randomBytes(4).toString("hex"), name: p };
       }
       return p;
     });
@@ -48,7 +48,7 @@ content = content.replace(`      socket.on("add_project", (projectName: string) 
       });`, `      socket.on("add_project", (projectName: string) => {
         if (!serverConfig.projects) serverConfig.projects = [];
         if (!serverConfig.projects.find(p => p.name === projectName)) {
-          serverConfig.projects.push({ id: require('crypto').randomBytes(4).toString("hex"), name: projectName });
+          serverConfig.projects.push({ id: crypto.randomBytes(4).toString("hex"), name: projectName });
           saveConfig();
           io.to(serverConfig.orgCode).emit("projects_updated", serverConfig.projects);
         }

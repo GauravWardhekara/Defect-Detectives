@@ -1,3 +1,4 @@
+import { AlertModal } from '../components/AlertModal';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { AppState, Defect, AuditEvent, User, AIConfig } from '../types';
 import Papa from 'papaparse';
@@ -18,6 +19,7 @@ interface AppContextType extends AppState {
   importProfile: (user: User) => void;
   addUser: (user: User) => void;
   addProject: (name: string) => void;
+  addPlatform: (name: string) => void;
   deleteProject: (projectId: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -46,6 +48,7 @@ const defaultState: AppState = {
   auditTrail: [],
   users: [],
   projects: [],
+  platforms: [],
   currentUser: null,
   aiConfig: null,
 };
@@ -57,6 +60,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [auditTrail, setAuditTrail] = useState<AuditEvent[]>(defaultState.auditTrail);
   const [users, setUsers] = useState<User[]>(defaultState.users);
   const [projects, setProjects] = useState<Project[]>(defaultState.projects);
+  const [platforms, setPlatforms] = useState<Platform[]>(defaultState.platforms);
   const [currentUser, setCurrentUser] = useState<User | null>(defaultState.currentUser);
   const [aiConfig, setAiConfigState] = useState<AIConfig | null>(defaultState.aiConfig);
 
@@ -68,6 +72,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [networkConfig, setNetworkConfig] = useState<{isMaster: boolean, masterUrl: string | null, orgCode?: string, inviteCode?: string} | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [authStatus, setAuthStatus] = useState<'pending' | 'success' | 'required' | 'failed'>('pending');
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const setAiConfig = (config: AIConfig | null) => {
     setAiConfigState(config);
@@ -133,11 +138,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           s.on("connect", () => {
             s.emit("auth", loadedProfile);
           });
-          s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: Project[] }) => {
+          s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: Project[], platforms?: Platform[] }) => {
             setAuthStatus('success');
             setUsers(res.users);
             setDefects(res.defects);
             if (res.projects) setProjects(res.projects);
+            if (res.platforms) setPlatforms(res.platforms);
             setNetworkConfig({ ...mockConfig, orgCode: res.orgCode, inviteCode: res.inviteCode });
           });
           s.on("auth_required", () => {
@@ -145,12 +151,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           });
           s.on("auth_failed", (err) => {
             setAuthStatus('failed');
-            alert(`Authentication failed: ${err}`);
+            setAlertMessage(`Authentication failed: ${err}`);
             localStorage.removeItem('manual_master_url');
             window.location.reload();
           });
           s.on("projects_updated", (projs: Project[]) => {
             setProjects(projs);
+          });
+          s.on("platforms_updated", (plats: Platform[]) => {
+            setPlatforms(plats);
           });
           s.on("users_updated", (orgUsers: User[]) => {
             setUsers(orgUsers);
@@ -181,11 +190,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               s.emit("auth", loadedProfile);
             });
 
-            s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: Project[] }) => {
+            s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: Project[], platforms?: Platform[] }) => {
               setAuthStatus('success');
               setUsers(res.users);
               setDefects(res.defects);
             if (res.projects) setProjects(res.projects);
+            if (res.platforms) setPlatforms(res.platforms);
               setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode, inviteCode: res.inviteCode } : null);
             });
 
@@ -195,11 +205,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
             s.on("auth_failed", (err) => {
               setAuthStatus('failed');
-              alert(`Authentication failed: ${err}`);
+              setAlertMessage(`Authentication failed: ${err}`);
             });
 
             s.on("projects_updated", (projs: Project[]) => {
             setProjects(projs);
+          });
+          s.on("platforms_updated", (plats: Platform[]) => {
+            setPlatforms(plats);
           });
           s.on("users_updated", (orgUsers: User[]) => {
               setUsers(orgUsers);
@@ -240,11 +253,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         s.emit("auth", currentUser);
       });
 
-      s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: Project[] }) => {
+      s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: Project[], platforms?: Platform[] }) => {
         setAuthStatus('success');
         setUsers(res.users);
         setDefects(res.defects);
             if (res.projects) setProjects(res.projects);
+            if (res.platforms) setPlatforms(res.platforms);
         setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode, inviteCode: res.inviteCode } : null);
       });
 
@@ -254,11 +268,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
       s.on("auth_failed", (err) => {
         setAuthStatus('failed');
-        alert(`Authentication failed: ${err}`);
+        setAlertMessage(`Authentication failed: ${err}`);
       });
 
       s.on("projects_updated", (projs: Project[]) => {
             setProjects(projs);
+          });
+          s.on("platforms_updated", (plats: Platform[]) => {
+            setPlatforms(plats);
           });
           s.on("users_updated", (orgUsers: User[]) => {
         setUsers(orgUsers);
@@ -342,6 +359,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   
   const addUser = (user: User) => setUsers(prev => [...prev, user]);
   const addProject = (name: string) => setProjects(prev => prev.find(p => p.name === name) ? prev : [...prev, { id: 'local-' + Date.now(), name }]);
+  const addPlatform = (name: string) => setPlatforms(prev => prev.find(p => p.name === name) ? prev : [...prev, { id: 'local-' + Date.now(), name }]);
   const deleteProject = (projectId: string) => {
     const proj = projects.find(p => p.id === projectId);
     if (!proj) return;
@@ -371,6 +389,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     auditTrail, setAuditTrail, addAuditEvent,
     users, addUser,
     projects, addProject, deleteProject,
+    platforms, addPlatform,
     currentUser, setCurrentUser, saveProfile, importProfile,
     searchQuery, setSearchQuery,
     filterProject, setFilterProject,
@@ -383,7 +402,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     authStatus, joinOrg
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+    </AppContext.Provider>
+  );
 };
 
 export const useAppContext = () => {

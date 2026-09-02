@@ -22,6 +22,8 @@ import { rowsToDefects } from './lib/googleSheets'; // Keep for parsing logic, o
 import { Defect, Status } from './types';
 import { Plus, Download, Upload } from 'lucide-react';
 import Papa from 'papaparse';
+import { AlertModal } from './components/AlertModal';
+import { ImportProgressModal } from './components/ImportProgressModal';
 
 const AppContent = () => {
   const { defects, setDefects, auditTrail, networkConfig, socket, authStatus, projects, addProject, filterProject, setFilterProject, filterStatus, setFilterStatus, searchQuery, setSearchQuery } = useAppContext();
@@ -31,6 +33,8 @@ const AppContent = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<{current: number, total: number} | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,6 +68,11 @@ const AppContent = () => {
     
     Papa.parse(file, {
       complete: (results) => {
+        if (!results.data || results.data.length <= 1) {
+          setAlertMessage("The CSV file is empty or missing data rows.");
+          return;
+        }
+        
         if (results.data && results.data.length > 1) {
           const rows = results.data as any[][];
           
@@ -71,19 +80,9 @@ const AppContent = () => {
           let fallbackProject: string | null = null;
           const needsFallback = rows.slice(1).some(row => row[0] && row[1] && (!row[3] || row[3].trim() === ''));
           
+          // Since window.prompt might be blocked in iframes, we should use a default if it's missing, or fallback project name.
           if (needsFallback) {
-            const defaultProj = filterProject !== 'All' ? filterProject : '';
-            const userInput = window.prompt(
-              "Some issues in the CSV don't have a project assigned. Please enter a project name to import them into:",
-              defaultProj
-            );
-            
-            if (userInput === null) return; // User cancelled
-            if (!userInput.trim()) {
-              alert("A project name is required to import these defects.");
-              return;
-            }
-            fallbackProject = userInput.trim();
+             fallbackProject = filterProject !== 'All' && filterProject !== '' ? filterProject : 'Imported Project';
           }
 
           const importedDefects: Defect[] = [];
@@ -92,9 +91,9 @@ const AppContent = () => {
             const row = rows[i];
             if (!row[0] || !row[1]) continue; // Skip invalid rows
             
-            const id = row[0];
+            let id = row[0];
             if (defects.some(d => d.id === id) || importedDefects.some(d => d.id === id)) {
-              continue; // Skip duplicate records
+              id = `${id}-${Math.floor(Math.random() * 10000)}`;
             }
             
             const rowProj = row[3] && row[3].trim() !== '' ? row[3].trim() : fallbackProject;
@@ -104,7 +103,7 @@ const AppContent = () => {
             }
 
             importedDefects.push({
-              id: row[0],
+              id: id,
               title: row[1],
               description: row[2] || '',
               project: rowProj || 'General',
@@ -128,11 +127,43 @@ const AppContent = () => {
             } as Defect);
           }
 
-          importedDefects.forEach(d => {
-            if (socket) {
-              socket.emit('add_defect', d);
+          // Process emission asynchronously to show real-time progress
+          const total = importedDefects.length;
+          if (total === 0) {
+            setAlertMessage("No new issues were found to import. They may be duplicates of existing issues.");
+            return;
+          }
+          
+          setImportProgress({ current: 0, total });
+          
+          let i = 0;
+          const chunkSize = 10;
+          
+          const processChunk = () => {
+            const end = Math.min(i + chunkSize, total);
+            for (; i < end; i++) {
+              const d = importedDefects[i];
+              if (socket) {
+                socket.emit('add_defect', d);
+              } else {
+                // If offline, just update context directly (though the app usually requires a socket)
+                setDefects(prev => [...prev, d]);
+              }
             }
-          });
+            
+            setImportProgress({ current: i, total });
+            
+            if (i < total) {
+              requestAnimationFrame(processChunk);
+            } else {
+              setTimeout(() => {
+                setImportProgress(null);
+                setAlertMessage(`Successfully imported ${total} issues.`);
+              }, 500); // Small delay to let user see 100%
+            }
+          };
+          
+          requestAnimationFrame(processChunk);
         }
       }
     });
@@ -194,7 +225,7 @@ const AppContent = () => {
           <button 
             onClick={() => {
               if (projects.length === 0) {
-                alert("There are no Projects. Please add a project to continue.");
+                setAlertMessage("There are no Projects. Please add a project to continue.");
                 setActiveView('projects');
               } else {
                 fileInputRef.current?.click();
@@ -207,7 +238,7 @@ const AppContent = () => {
           <button 
             onClick={() => {
               if (projects.length === 0) {
-                alert("There are no Projects. Please add a project to continue.");
+                setAlertMessage("There are no Projects. Please add a project to continue.");
                 setActiveView('projects');
               } else {
                 setSelectedDefect(undefined); 
@@ -259,6 +290,15 @@ const AppContent = () => {
           </div>
         </div>
       )}
+      
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+      
+      {importProgress && (
+        <ImportProgressModal current={importProgress.current} total={importProgress.total} />
+      )}
+      
       <Chatbot />
     </Layout>
   );

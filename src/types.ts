@@ -26,6 +26,7 @@ export interface Defect {
   title: string;
   description: string;
   project: string;
+  platforms?: string[];
   module?: string;
   priority: Priority;
   severity: Severity;
@@ -78,8 +79,14 @@ export interface AppState {
   auditTrail: AuditEvent[];
   users: User[];
   projects: Project[];
+  platforms: Platform[];
   currentUser: User | null;
   aiConfig: AIConfig | null;
+}
+
+export interface Platform {
+  id: string;
+  name: string;
 }
 
 export interface Project {

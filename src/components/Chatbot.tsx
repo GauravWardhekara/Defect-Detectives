@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { AlertModal } from './AlertModal';
 
 interface Message {
   role: 'user' | 'model';
@@ -15,6 +16,7 @@ export const Chatbot = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -58,14 +60,21 @@ export const Chatbot = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get chat response');
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || 'Failed to get chat response');
       }
 
       const data = await response.json();
       setMessages(prev => [...prev, { role: 'model', text: data.text }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setMessages(prev => [...prev, { role: 'model', text: 'Sorry, I encountered an error. Please try again later.' }]);
+      const errMsg = error.message || "";
+      if (errMsg.includes("API Key") || errMsg.includes("Model") || errMsg.includes("Invalid") || errMsg.includes("Missing")) {
+        setAlertMessage(`${errMsg}. Please update your settings in the AI Configuration.`);
+        setMessages(prev => [...prev, { role: 'model', text: 'Sorry, I encountered an authentication error. Please check your AI config.' }]);
+      } else {
+        setMessages(prev => [...prev, { role: 'model', text: 'Sorry, I encountered an error. Please try again later.' }]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -80,17 +89,22 @@ export const Chatbot = () => {
 
   if (!isOpen) {
     return (
+      <>
+      {alertMessage && <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />}
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-10 right-16 w-[60px] h-[60px] bg-white border border-ink-faint rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.05)] flex items-center justify-center z-50 cursor-pointer text-ink hover:bg-bg-base transition-colors"
       >
         <MessageSquare className="w-6 h-6" />
       </button>
+      </>
     );
   }
 
   return (
-    <div className="fixed bottom-28 right-16 w-96 h-[500px] bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-ink-faint flex flex-col z-50 overflow-hidden">
+    <>
+      {alertMessage && <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />}
+      <div className="fixed bottom-28 right-16 w-96 h-[500px] bg-white rounded-[24px] shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-ink-faint flex flex-col z-50 overflow-hidden">
       {/* Header */}
       <div className="h-16 bg-ink text-white flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-3">
@@ -165,5 +179,6 @@ export const Chatbot = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };

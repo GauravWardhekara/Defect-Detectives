@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Shield, Users, Copy, Check, Cpu, FolderGit2, Edit2, Check as CheckIcon } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
+import { AlertModal } from './AlertModal';
 import { AIProvider } from '../types';
 
 export const SettingsModal = ({ onClose, onNavigateToProjects }: { onClose: () => void, onNavigateToProjects?: () => void }) => {
@@ -17,6 +18,7 @@ export const SettingsModal = ({ onClose, onNavigateToProjects }: { onClose: () =
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const handleCopy = () => {
     if (networkConfig?.inviteCode) {
@@ -48,8 +50,14 @@ export const SettingsModal = ({ onClose, onNavigateToProjects }: { onClose: () =
       setTestMessage('Connection successful! Models loaded.');
     } catch (err: any) {
       setTestStatus('error');
-      setTestMessage(err.message);
       setAvailableModels([]);
+      const errMsg = err.message || "";
+      if (errMsg.includes("API Key") || errMsg.includes("Model") || errMsg.includes("Invalid") || errMsg.includes("Missing") || errMsg.includes("Deprecated")) {
+        setAlertMessage(`${errMsg}. Please check your credentials and model selections.`);
+        setTestMessage("Configuration error detected.");
+      } else {
+        setTestMessage(errMsg);
+      }
     }
   };
 

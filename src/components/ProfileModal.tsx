@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { X, Download, User } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { generateProfileCard } from '../lib/profile';
+import { AlertModal } from './AlertModal';
 
 export const ProfileModal = ({ onClose }: { onClose: () => void }) => {
   const { currentUser, saveProfile } = useAppContext();
   const [editName, setEditName] = useState(currentUser?.name || '');
   const [editDept, setEditDept] = useState(currentUser?.department || '');
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const handleUpdateProfile = () => {
     if (editName && editDept) {
       saveProfile(editName, editDept);
-      alert('Profile updated and saved locally!');
-      onClose();
+      setAlertMessage('Profile updated and saved locally!');
     }
   };
 
@@ -77,6 +78,12 @@ export const ProfileModal = ({ onClose }: { onClose: () => void }) => {
           </div>
         </div>
       </div>
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => {
+          setAlertMessage(null);
+          onClose();
+        }} />
+      )}
     </div>
   );
 };

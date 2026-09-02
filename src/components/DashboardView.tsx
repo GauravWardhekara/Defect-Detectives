@@ -1,3 +1,4 @@
+import { AlertModal } from './AlertModal';
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAppContext } from '../context/AppContext';
@@ -10,6 +11,7 @@ export const DashboardView = () => {
   const { filteredDefects: defects, networkConfig, aiConfig } = useAppContext();
   const [insights, setInsights] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const generateInsights = async () => {
     if (!aiConfig?.apiKey) {
@@ -31,14 +33,15 @@ export const DashboardView = () => {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to generate insights');
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || 'Failed to generate insights');
       }
       
       const data = await response.json();
       setInsights(data.insights);
     } catch (e) {
       console.error(e);
-      alert("Failed to generate insights. Please check your connection.");
+      setAlertMessage("Failed to generate insights. Please check your connection.");
     } finally {
       setIsGenerating(false);
     }
@@ -170,6 +173,9 @@ export const DashboardView = () => {
           </div>
         </div>
       </div>
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
     </div>
   );
 };

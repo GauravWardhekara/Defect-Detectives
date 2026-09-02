@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { X, Check, Save, Plus, Camera as CameraIcon, Upload, Trash2, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Defect, Priority, Severity, Status } from '../types';
+import { AlertModal } from './AlertModal';
+import { PromptModal } from './PromptModal';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { GoogleGenAI } from '@google/genai';
 
@@ -22,19 +24,66 @@ const STATUS_STAGES = [
 ];
 
 export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectFormModalProps) => {
-  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser, networkConfig, aiConfig, filterProject } = useAppContext();
+  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser, networkConfig, aiConfig, filterProject, platforms, addPlatform, socket } = useAppContext();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const isInitialMount = useRef(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [promptConfig, setPromptConfig] = useState<{ isOpen: boolean; title: string; field: string }>({ isOpen: false, title: '', field: '' });
+  
+  const handlePromptSubmit = (value: string) => {
+    const val = value.trim();
+    if (!val) {
+      setPromptConfig(prev => ({ ...prev, isOpen: false }));
+      return;
+    }
+    
+    if (promptConfig.field === 'project') {
+      if (!projects.find(p => p.name === val)) {
+        addProject(val);
+        if (socket) socket.emit("add_project", val);
+        setFormData(prev => ({ ...prev, project: val }));
+      }
+    } else if (promptConfig.field === 'platform') {
+      if (!platforms.find(p => p.name === val)) {
+        addPlatform(val);
+        if (socket) socket.emit("add_platform", val);
+        const newPlats = formData.platforms ? [...formData.platforms, val] : [val];
+        setFormData(prev => ({ ...prev, platforms: newPlats }));
+      }
+    } else if (promptConfig.field === 'assignee' || promptConfig.field === 'reporter') {
+      const isExisting = users.some(u => u.name.toLowerCase() === val.toLowerCase());
+      if (!isExisting) {
+        addUser({
+          id: `usr-${Date.now()}`,
+          name: val,
+          email: `${val.replace(/\s+/g, '.').toLowerCase()}@example.com`,
+        });
+      }
+      setFormData(prev => ({ ...prev, [promptConfig.field]: val }));
+    }
+    setPromptConfig(prev => ({ ...prev, isOpen: false }));
+  };
+  
 
   const handleAddNewProject = () => {
-    const newProj = prompt('Enter new project name:');
-    if (newProj && newProj.trim() && !projects.find(p => p.name === newProj.trim())) {
-      addProject(newProj.trim());
-      setFormData(prev => ({ ...prev, project: newProj.trim() }));
-    }
+    setPromptConfig({ isOpen: true, title: 'Enter new project name:', field: 'project' });
+  };
+  const handleAddNewPlatform = () => {
+    setPromptConfig({ isOpen: true, title: 'Enter new platform name:', field: 'platform' });
+  };
+
+  const togglePlatform = (platName: string) => {
+    setFormData(prev => {
+      const current = prev.platforms || [];
+      if (current.includes(platName)) {
+        return { ...prev, platforms: current.filter(p => p !== platName) };
+      } else {
+        return { ...prev, platforms: [...current, platName] };
+      }
+    });
   };
 
   const handleAddNewUser = (field: 'assignee' | 'reporter') => {
@@ -58,6 +107,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
       title: '',
       description: '',
       project: filterProject !== 'All' ? filterProject : (projects[0]?.name || ''),
+      platforms: [],
       priority: Priority.MEDIUM,
       severity: Severity.MINOR,
       status: Status.OPEN,
@@ -127,7 +177,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
 
   const handleAnalyze = async () => {
     if (!formData.title && !formData.description) {
-      alert("Please enter a title and description first.");
+      setAlertMessage("Please enter a title and description first.");
       return;
     }
 
@@ -152,7 +202,8 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
       });
       
       if (!response.ok) {
-        throw new Error('Failed to analyze defect');
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || 'Failed to analyze defect');
       }
 
       const result = await response.json();
@@ -161,9 +212,14 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
         rootCauseAnalysis: prev.rootCauseAnalysis || result.rootCauseAnalysis || '',
         resolutionNotes: prev.resolutionNotes || result.resolutionNotes || ''
       }));
-    } catch (e) {
+    } catch (e: any) {
       console.error("Gemini API Error", e);
-      alert("Failed to analyze defect. Please check your connection and try again.");
+      const errMsg = e.message || "";
+      if (errMsg.includes("API Key") || errMsg.includes("Model") || errMsg.includes("Invalid") || errMsg.includes("Missing")) {
+        setAlertMessage(`${errMsg}. Please update your settings in the AI Configuration.`);
+      } else {
+        setAlertMessage("Failed to analyze defect. Please check your connection and try again.");
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -178,7 +234,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
         const request = await Camera.requestPermissions();
         if (request.camera !== 'granted') {
           console.log('Camera permission denied');
-          alert('Camera permission is required to take photos.');
+          setAlertMessage('Camera permission is required to take photos.');
           return;
         }
       }
@@ -282,6 +338,31 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
                   </select>
                   <button type="button" onClick={handleAddNewProject} className="p-2 border border-ink-faint bg-bg-base rounded-[16px] text-ink-muted hover:bg-black/5" title="Add New Project">
                     <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">Platforms</label>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {platforms.map(p => {
+                    const isSelected = formData.platforms?.includes(p.name);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => togglePlatform(p.name)}
+                        className={`px-3 py-1 text-[12px] font-medium rounded-full border transition-colors ${
+                          isSelected 
+                            ? 'bg-ink text-white border-ink' 
+                            : 'bg-bg-base text-ink border-ink-faint hover:bg-black/5'
+                        }`}
+                      >
+                        {p.name}
+                      </button>
+                    );
+                  })}
+                  <button type="button" onClick={handleAddNewPlatform} className="p-1 px-3 border border-dashed border-ink-muted text-ink-muted bg-bg-base rounded-full hover:bg-black/5 text-[12px] flex items-center gap-1" title="Add New Platform">
+                    <Plus className="w-3 h-3" /> Add
                   </button>
                 </div>
               </div>
@@ -509,6 +590,15 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
           </div>
         </div>
       )}
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
+      <PromptModal 
+        isOpen={promptConfig.isOpen} 
+        title={promptConfig.title} 
+        onClose={() => setPromptConfig(prev => ({ ...prev, isOpen: false }))} 
+        onSubmit={handlePromptSubmit} 
+      />
     </div>
   );
 };

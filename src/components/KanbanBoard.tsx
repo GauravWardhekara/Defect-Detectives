@@ -29,14 +29,14 @@ export const KanbanBoard = ({ onRowClick }: { onRowClick: (defect: Defect) => vo
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-4 h-full overflow-x-auto pb-4">
+      <div className="flex flex-1 gap-4 h-full w-full p-4 overflow-x-auto overflow-y-hidden">
         {KANBAN_COLUMNS.map(column => {
           const columnDefects = defects.filter(d => d.status === column.id);
           
           return (
-            <div key={column.id} className="w-80 shrink-0 flex flex-col bg-bg-base border border-ink-faint rounded-[24px]">
-              <div className="p-3 border-b border-ink-faint flex justify-between items-center border-b border-ink-faint bg-transparent rounded-t-[24px] px-6 py-5">
-                <h3 className="font-medium uppercase tracking-[0.1em] font-mono text-[0.7rem] text-ink">{column.title}</h3>
+            <div key={column.id} className="flex-1 min-w-[160px] lg:min-w-[180px] shrink flex flex-col bg-bg-base border border-ink-faint rounded-[24px] max-h-full overflow-hidden">
+              <div className="p-3 border-b border-ink-faint flex justify-between items-center bg-transparent shrink-0 px-5 py-4">
+                <h3 className="font-medium uppercase tracking-[0.1em] font-mono text-[0.65rem] md:text-[0.7rem] text-ink">{column.title}</h3>
                 <span className="font-mono text-xs text-ink-muted">
                   {columnDefects.length}
                 </span>
@@ -47,7 +47,7 @@ export const KanbanBoard = ({ onRowClick }: { onRowClick: (defect: Defect) => vo
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`p-4 min-h-[150px] transition-colors ${
+                    className={`p-3 md:p-4 flex-1 overflow-y-auto min-h-[150px] transition-colors ${
                       snapshot.isDraggingOver ? 'bg-black/5' : ''
                     }`}
                   >

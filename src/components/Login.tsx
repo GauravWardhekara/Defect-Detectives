@@ -1,3 +1,4 @@
+import { AlertModal } from './AlertModal';
 import React, { useState, useRef } from 'react';
 import { Wifi, Loader2, Server, Computer, User, ShieldCheck, Upload, Share2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -8,6 +9,7 @@ export const NetworkConnect = () => {
   
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('');
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState('');
   const [importError, setImportError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +57,7 @@ export const NetworkConnect = () => {
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert('Cannot host workspace. This device does not have the backend server running. You must run the desktop app or standard server to host.');
+      setAlertMessage('Cannot host workspace. This device does not have the backend server running. You must run the desktop app or standard server to host.');
     }
   };
 
@@ -323,6 +325,9 @@ export const NetworkConnect = () => {
           </>
         )}
       </div>
+      {alertMessage && (
+        <AlertModal message={alertMessage} onClose={() => setAlertMessage(null)} />
+      )}
     </div>
   );
 };

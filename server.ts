@@ -40,7 +40,7 @@ if (fs.existsSync(CONFIG_FILE)) {
     serverConfig.projects = serverConfig.projects.map((p: any) => {
       if (typeof p === 'string') {
         migrated = true;
-        return { id: require('crypto').randomBytes(4).toString("hex"), name: p };
+        return { id: crypto.randomBytes(4).toString("hex"), name: p };
       }
       return p;
     });
@@ -213,7 +213,7 @@ async function startServer() {
         }
 
         if (isWhitelisted) {
-          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects, projects: serverConfig.projects });
+          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects, projects: serverConfig.projects, platforms: serverConfig.platforms || [] });
           socket.join(serverConfig.orgCode);
         } else {
           socket.emit("auth_required");
@@ -226,7 +226,7 @@ async function startServer() {
             serverConfig.users.push(data.profile);
             saveConfig();
           }
-          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects, projects: serverConfig.projects });
+          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects, projects: serverConfig.projects, platforms: serverConfig.platforms || [] });
           socket.join(serverConfig.orgCode);
           // Broadcast new user list to all in org
           io.to(serverConfig.orgCode).emit("users_updated", serverConfig.users);
@@ -252,9 +252,17 @@ async function startServer() {
       socket.on("add_project", (projectName: string) => {
         if (!serverConfig.projects) serverConfig.projects = [];
         if (!serverConfig.projects.find(p => p.name === projectName)) {
-          serverConfig.projects.push({ id: require('crypto').randomBytes(4).toString("hex"), name: projectName });
+          serverConfig.projects.push({ id: crypto.randomBytes(4).toString("hex"), name: projectName });
           saveConfig();
           io.to(serverConfig.orgCode).emit("projects_updated", serverConfig.projects);
+        }
+      });
+      socket.on("add_platform", (platformName: string) => {
+        if (!serverConfig.platforms) serverConfig.platforms = [];
+        if (!serverConfig.platforms.find(p => p.name === platformName)) {
+          serverConfig.platforms.push({ id: crypto.randomBytes(4).toString("hex"), name: platformName });
+          saveConfig();
+          io.to(serverConfig.orgCode).emit("platforms_updated", serverConfig.platforms);
         }
       });
 
@@ -348,7 +356,7 @@ async function startServer() {
         io.to(serverConfig.orgCode).emit("sync", defects);
       }
     }
-    res.json({ defects, projects: serverConfig.projects });
+    res.json({ defects, projects: serverConfig.projects, platforms: serverConfig.platforms || [] });
   });
 
   // Background auto-sync for non-master nodes
@@ -461,7 +469,15 @@ async function startServer() {
         })
       });
       
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) {
+        const text = await response.text();
+        let errMsg = text;
+        try {
+          const json = JSON.parse(text);
+          if (json.error && json.error.message) errMsg = json.error.message;
+        } catch(e){}
+        throw new Error(errMsg);
+      }
       const data = await response.json();
       return data.choices[0].message.content;
     }
@@ -496,7 +512,15 @@ async function startServer() {
         })
       });
 
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) {
+        const text = await response.text();
+        let errMsg = text;
+        try {
+          const json = JSON.parse(text);
+          if (json.error && json.error.message) errMsg = json.error.message;
+        } catch(e){}
+        throw new Error(errMsg);
+      }
       const data = await response.json();
       let text = data.content[0].text;
       if (isJson && !text.startsWith('{')) text = "{" + text;

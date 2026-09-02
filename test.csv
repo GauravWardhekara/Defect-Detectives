@@ -1,0 +1,87 @@
+ID,Title,Description,Project,Module,Priority,Severity,Status,Assignee,Reporter,Reported Version,Target Fix Version,Reproduction Steps,Expected Behavior,Actual Behavior,Root Cause Analysis,Resolution Notes,Comments,Image URL,Created At,Updated At
+1,FLL SANDBOX if i remove the location permission for atlas i am unable to logout on Android device,,,,,,,,,,,,,,,,"discussed with PJ - Ignore  for now we will catch in CP
+ | Platform:",,,
+2,White space remains after closing the keyboard on the Failure Reporting screen,,,,,,,,,"CPv3.0.0.0.25a, STPSAML,TEST, Android tab A9+.",,"1. Login to Atlas.
+2. Start any Work Order.
+3. Navigate to the Failure Reporting section.
+4. Add Failure Class, Problem, Cause, and Remedy.
+5. Tap on the Remark field → Keyboard opens.
+6. Close the keyboard.
+",,"After the keyboard is closed, a white space remains on the screen, and the user must scroll to bring the Remark field back into view.",,,Unreported | Platform:,,,
+3,Added item data appears blank after ntw fluctuation.,,,,,,,,,"Cpv4.0.0.0.6b, STP, TEST, Android, Windows, iOS",,"1.Login to atlas start wo with partial GL
+2.Go to materials section and add two material req 1 3.with self issue 1 without self issue.
+4.click on save button and immediately off ntw 
+5.add another 2 item req as above 
+6.Click on failure reporting tab
+7.again click on material and then item",,"no item line appers in hash mark, still save button is displayed and storeroom set to default.
+",,,Unreported | Platform:,,,
+4,GL account button appears read-only,,,,,,,,,,,"1.Login to atlas start wo with partial GL
+2.Go to materials section and add two material req 1 with self issue 1 without self issue.
+3.click on save button and immediately off ntw 
+4.ON ntw
+5.discard error appears for partial GL 
+6.Click Go Back
+7.then click back on item screen
+",," GL account button displays inactive or read only
+
+",,,Unreported | Platform:,,,
+5,"Material Quantity window item description for material displays item instead of material.
+",,,,,,,,,"V4.1c, EDI, TRAIN, Android",,"1.Login to Atlas
+2.Start WO
+3.Click on reconciled material 
+4.click on view edit",,"Description says Item
+                           Material1 (On next line)
+
+",,,Unreported | Platform:,,,
+6,iPhone Application get crash,,,,,,,,,"v4.0, STP, TEST, iPhone",,"1.Login to Atlas
+2.Swip left to right on screen to open hamburger menu ",,Observed: Half map and half screen login page displyas ,,,Unreported | Platform:,,,
+7,iPhone Application get crash,,,,,,,,,"v4.1e, EDI, TRAIN, iPhone",,"1. Login to Atlas.
+2. Create new WO| Without job plan
+3.Start same WO
+4.Click on TT drawer and click Log out.
+5.Click OK on labour transaction window.
+6.immediatly off screen when labour transaction window closes and white screen displyas.
+7.Again on screen and onpen Atlas App.
+",,The app screen open with half map and half white.,,,Unreported | Platform:,,,
+8,The base map appears after the ideal timeout for the server map.,"In webtool Set GIS login method to 'Named Users', and set Fallback to true.",,,,,,Mayur Sir.,,"CPv4.0.0.0.12c, INSP, Test, Windows.",,"1. Log in to Atlas.
+2. 2. Click the Login button on the map.
+3. Enter a valid username and password.
+4. Select the Remember Me checkbox.
+5. Click Sign In.
+Result: The original map is displayed as expected.
+6. Set a low idle timeout.
+7. Re-log in after ideal time out.
+",,The Base map has appeared.,,,Internally | Platform:,,,
+9,Base map appears when switch module in offline.,"In webtool Set GIS login method to 'Named Users', and set Fallback to true.",,,,,,Mayur Sir.,,"CPv4.0.0.0.12c, INSP, Test, Windows.",,"1. Log in to Atlas and navigate to the inspection module.
+2. Click the Login button on the map.
+3. Enter a valid username and password.
+4. Select the Remember Me checkbox.
+5. Click Sign In.
+Result: The original map is displayed as expected.
+6. Go offline and switch to work order module.
+7. Go Online.",,Base map with previously loaded layer displayed.,,,Internally | Platform:,,,
+10,"
+Reproduced.
+Implement having map pins without GIS authentication information - REQ-2449","In webtool Set GIS login method to 'Named Users', and set Fallback to true.",,,,,Fixed,Vaishnavi,,"CPv4.0.0.0.12c, INSP, Test, Windows.",,"Scenario 1:
+1. Log in to Request with valid credentials.
+2. Open the form.
+3. Click on the map icon.
+4. Long-press on map.
+Observation: Long-press not work on base map.
+
+Scenario 2: (Applicable for both STP and INSP)
+1. Access the form by QR code.
+2. Click on map icon.
+3. Long-press on map.
+Observation: Long-press not work on base map.
+",, Long-press not work on base map.,,,Internally | Platform:,,,
+11,Inventory Module Not Visible for User After Supervisor Access Removed from web tool,"webtool  Site has no access and Organization has access to Supervisor Module
+",,,,,,Vaishnavi,,"CPv4.0.0.0.14, EDI, TEST, Windows",,"1.Log in to Atlas
+2.Click on hamburger menu.
+
+",,Inventory module is not displayed even though Inventory access is available.,,,Internally | Platform:,,,
+12,Inventory Users Unable to Login on Android,,,,,,,Vaishnavi,,"CPv4.0.0.0.14, STP, TEST, Android",,"1.Launch the ATLAS mobile app.
+2.Enter valid credentials for ESAMINVENTORYSUP or ESAMINVENTORYCLERK.
+3.Tap Sign In.",,"After clicking Sign In, the user is not logged in. The screen is split, with the Sign In window displayed on one side and the Map window displayed on the other.",,,Internally | Platform:,,,
+1,Round number displays wrong list as compare details view,Round with atlist one stop.,,,,,Fixed,,,v4.2q,v4.2r,Start Round.,,Round number displays wrong list as compare details view,,,"Platform: Windows, iOS, Android",,,
+2,Round number missing in labor tab,Round with atlist one stop.,,,,,Fixed,,,v4.2q,v4.2r,Start Round.,,Round number missing in labor tab,,,"Platform: Windows, iOS, Android",,,
