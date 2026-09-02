@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Columns, Table as TableIcon, FileSpreadsheet, Settings, LogOut, Search, Filter, Link2, Unlink } from 'lucide-react';
+import { LayoutDashboard, Columns, Table as TableIcon, FileSpreadsheet, Settings, LogOut, Search, Filter, Link2, Unlink, Trash2 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { Status } from '../types';
 
@@ -17,7 +17,7 @@ interface LayoutProps {
 }
 
 export const Layout = ({ children, activeView, setActiveView, onSync, onExportExcel, onOpenSettings, onOpenConnectModal, onOpenProfileModal, isSyncing, lastSynced }: LayoutProps) => {
-  const { currentUser, authStatus, networkConfig, socket, projects, searchQuery, setSearchQuery, filterProject, setFilterProject, filterStatus, setFilterStatus } = useAppContext();
+  const { currentUser, authStatus, networkConfig, socket, projects, searchQuery, setSearchQuery, filterProject, setFilterProject, filterStatus, setFilterStatus, deleteProject } = useAppContext();
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const isWorkspaceActive = networkConfig?.isMaster || authStatus === 'success';
 
@@ -32,9 +32,7 @@ export const Layout = ({ children, activeView, setActiveView, onSync, onExportEx
     <div className="flex flex-col min-h-screen h-screen bg-[#F1F5F9] text-slate-900 font-sans antialiased overflow-hidden">
       <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 shrink-0 shadow-sm z-10">
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-            <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-          </div>
+          <img src="/icon.png" alt="App Icon" className="w-7 h-7 sm:w-8 sm:h-8 object-cover rounded-lg shrink-0 border border-slate-200" />
           <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-800 flex items-center">
             Defect Diary
           </h1>
@@ -108,7 +106,55 @@ export const Layout = ({ children, activeView, setActiveView, onSync, onExportEx
               )
             })}
             
-            <div className="pt-8 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 px-2">Integrations</div>
+            {(activeView === 'table' || activeView === 'kanban') && (
+              <>
+                <div className="pt-6 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Projects</div>
+                <div className="space-y-1 mb-6 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  <button
+                    onClick={() => setFilterProject('All')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                      filterProject === 'All'
+                        ? 'bg-slate-800 text-white' 
+                        : 'text-slate-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="w-5 h-5 flex items-center justify-center shrink-0 text-slate-500">#</div>
+                    <span className="truncate text-left">All Projects</span>
+                  </button>
+                  {projects.map((project) => (
+                    <div key={project} className="group relative w-full flex items-center">
+                      <button
+                        onClick={() => setFilterProject(project)}
+                        className={`flex-1 flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                          filterProject === project
+                            ? 'bg-slate-800 text-white' 
+                            : 'text-slate-400 hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                          <div className={`w-2 h-2 rounded-full ${filterProject === project ? 'bg-indigo-400' : 'bg-slate-600'}`}></div>
+                        </div>
+                        <span className="truncate text-left">{project}</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Are you sure you want to delete the project "${project}"? This will permanently delete all associated defects.`)) {
+                            deleteProject(project);
+                          }
+                        }}
+                        className="absolute right-2 opacity-0 group-hover:opacity-100 p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-700 rounded-md transition-all"
+                        title="Delete Project"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="pt-4 border-t border-slate-800/50 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 px-2">Integrations</div>
             <button
               onClick={onOpenSettings}
               className="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:bg-slate-800 rounded-lg transition-colors mt-2"

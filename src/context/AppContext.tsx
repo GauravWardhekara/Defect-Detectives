@@ -18,6 +18,7 @@ interface AppContextType extends AppState {
   importProfile: (user: User) => void;
   addUser: (user: User) => void;
   addProject: (project: string) => void;
+  deleteProject: (project: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   filterProject: string | 'All';
@@ -44,7 +45,7 @@ const defaultState: AppState = {
   defects: defaultDefectsData,
   auditTrail: [],
   users: [],
-  projects: ['E-Commerce Web Portal', 'Mobile iOS & Android', 'Payment Gateway', 'Inventory ERP', 'Customer Support Dashboard', 'Analytics Pipeline', 'Marketing Site'],
+  projects: [],
   currentUser: null,
   aiConfig: null,
 };
@@ -132,10 +133,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           s.on("connect", () => {
             s.emit("auth", loadedProfile);
           });
-          s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[] }) => {
+          s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: string[] }) => {
             setAuthStatus('success');
             setUsers(res.users);
             setDefects(res.defects);
+            if (res.projects) setProjects(res.projects);
             setNetworkConfig({ ...mockConfig, orgCode: res.orgCode, inviteCode: res.inviteCode });
           });
           s.on("auth_required", () => {
@@ -146,6 +148,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             alert(`Authentication failed: ${err}`);
             localStorage.removeItem('manual_master_url');
             window.location.reload();
+          });
+          s.on("projects_updated", (projs: string[]) => {
+            setProjects(projs);
           });
           s.on("users_updated", (orgUsers: User[]) => {
             setUsers(orgUsers);
@@ -176,10 +181,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               s.emit("auth", loadedProfile);
             });
 
-            s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[] }) => {
+            s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: string[] }) => {
               setAuthStatus('success');
               setUsers(res.users);
               setDefects(res.defects);
+            if (res.projects) setProjects(res.projects);
               setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode, inviteCode: res.inviteCode } : null);
             });
 
@@ -192,7 +198,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               alert(`Authentication failed: ${err}`);
             });
 
-            s.on("users_updated", (orgUsers: User[]) => {
+            s.on("projects_updated", (projs: string[]) => {
+            setProjects(projs);
+          });
+          s.on("users_updated", (orgUsers: User[]) => {
               setUsers(orgUsers);
             });
 
@@ -231,10 +240,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         s.emit("auth", currentUser);
       });
 
-      s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[] }) => {
+      s.on("auth_success", (res: { orgCode: string, inviteCode?: string, users: User[], defects: Defect[], projects?: string[] }) => {
         setAuthStatus('success');
         setUsers(res.users);
         setDefects(res.defects);
+            if (res.projects) setProjects(res.projects);
         setNetworkConfig(prev => prev ? { ...prev, orgCode: res.orgCode, inviteCode: res.inviteCode } : null);
       });
 
@@ -247,7 +257,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         alert(`Authentication failed: ${err}`);
       });
 
-      s.on("users_updated", (orgUsers: User[]) => {
+      s.on("projects_updated", (projs: string[]) => {
+            setProjects(projs);
+          });
+          s.on("users_updated", (orgUsers: User[]) => {
         setUsers(orgUsers);
       });
 
@@ -275,7 +288,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const addDefect = (defect: Defect) => {
     if (socket) socket.emit("add_defect", defect);
     addAuditEvent({
-      id: `audit-${Date.now()}`,
+      id: `audit-${Date.now()}-${uuidv4()}`,
       defectId: defect.id,
       timestamp: new Date().toISOString(),
       user: currentUser?.name || 'System',
@@ -287,7 +300,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const updateDefect = (defect: Defect) => {
     if (socket) socket.emit("update_defect", defect);
     addAuditEvent({
-      id: `audit-${Date.now()}`,
+      id: `audit-${Date.now()}-${uuidv4()}`,
       defectId: defect.id,
       timestamp: new Date().toISOString(),
       user: currentUser?.name || 'System',
@@ -302,7 +315,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (defect) {
         if (socket) socket.emit("update_defect", { ...defect, ...updates, updatedAt: new Date().toISOString() });
         addAuditEvent({
-          id: `audit-${Date.now()}-${id}`,
+          id: `audit-${Date.now()}-${id}-${uuidv4()}`,
           defectId: id,
           timestamp: new Date().toISOString(),
           user: currentUser?.name || 'System',
@@ -316,7 +329,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const deleteDefect = (id: string) => {
     if (socket) socket.emit("delete_defect", id);
     addAuditEvent({
-      id: `audit-${Date.now()}-${id}`,
+      id: `audit-${Date.now()}-${id}-${uuidv4()}`,
       defectId: id,
       timestamp: new Date().toISOString(),
       user: currentUser?.name || 'System',
@@ -328,7 +341,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const addAuditEvent = (event: AuditEvent) => setAuditTrail(prev => [...prev, event]);
   
   const addUser = (user: User) => setUsers(prev => [...prev, user]);
-  const addProject = (project: string) => setProjects(prev => [...prev, project]);
+  const addProject = (project: string) => setProjects(prev => prev.includes(project) ? prev : [...prev, project]);
+  const deleteProject = (project: string) => {
+    setProjects(prev => prev.filter(p => p !== project));
+    if (filterProject === project) {
+      setFilterProject('All');
+    }
+    if (socketRef.current) {
+      socketRef.current.emit('delete_project', project);
+    }
+  };
 
   const filteredDefects = defects.filter(defect => {
     const matchesSearch = 

@@ -22,7 +22,7 @@ const STATUS_STAGES = [
 ];
 
 export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectFormModalProps) => {
-  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser, networkConfig, aiConfig } = useAppContext();
+  const { addDefect, updateDefect, deleteDefect, projects, users, currentUser, addProject, addUser, networkConfig, aiConfig, filterProject } = useAppContext();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -57,7 +57,7 @@ export const DefectFormModal = ({ existingDefect, onClose, onAutoSave }: DefectF
     existingDefect || {
       title: '',
       description: '',
-      project: projects[0],
+      project: filterProject !== 'All' ? filterProject : projects[0],
       priority: Priority.MEDIUM,
       severity: Severity.MINOR,
       status: Status.OPEN,

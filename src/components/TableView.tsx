@@ -4,12 +4,13 @@ import { PriorityBadge, SeverityBadge, StatusBadge } from './Badges';
 import { Defect, Status, Priority, Severity } from '../types';
 
 export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void }) => {
-  const { filteredDefects: globalDefects, users, bulkUpdateDefects } = useAppContext();
+  const { filteredDefects: globalDefects, users, projects, bulkUpdateDefects } = useAppContext();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState<Status | ''>('');
   const [bulkPriority, setBulkPriority] = useState<Priority | ''>('');
   const [bulkAssignee, setBulkAssignee] = useState<string>('');
-  
+  const [bulkProject, setBulkProject] = useState<string>('');
+
   const [sortBy, setSortBy] = useState<string>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -49,6 +50,7 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
     if (bulkStatus) updates.status = bulkStatus;
     if (bulkPriority) updates.priority = bulkPriority;
     if (bulkAssignee) updates.assignee = bulkAssignee;
+    if (bulkProject) updates.project = bulkProject;
     
     if (Object.keys(updates).length > 0) {
       bulkUpdateDefects(selectedIds, updates);
@@ -56,6 +58,7 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
       setBulkStatus('');
       setBulkPriority('');
       setBulkAssignee('');
+      setBulkProject('');
     }
   };
 
@@ -64,11 +67,6 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
       <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50/50 gap-4 shrink-0">
         <div className="flex items-center gap-4">
           <div className="text-sm font-semibold text-slate-700">Active Defects</div>
-          <div className="flex items-center gap-2">
-            <select className="text-xs border border-slate-200 rounded p-1 bg-white text-slate-600 focus:outline-none">
-              <option>All Projects</option>
-            </select>
-          </div>
         </div>
         
         {selectedIds.length > 0 ? (
@@ -98,9 +96,17 @@ export const TableView = ({ onRowClick }: { onRowClick: (defect: Defect) => void
               <option value="">Assign To...</option>
               {users.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
             </select>
+            <select 
+              value={bulkProject}
+              onChange={(e) => setBulkProject(e.target.value)}
+              className="text-xs border border-slate-200 rounded p-1 bg-white focus:outline-none text-slate-600"
+            >
+              <option value="">Move to Project...</option>
+              {projects.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
             <button 
               onClick={handleBulkUpdate}
-              disabled={!bulkStatus && !bulkPriority && !bulkAssignee}
+              disabled={!bulkStatus && !bulkPriority && !bulkAssignee && !bulkProject}
               className="text-xs bg-indigo-600 text-white px-3 py-1 rounded font-medium disabled:opacity-50 transition-opacity"
             >
               Apply

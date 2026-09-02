@@ -63,19 +63,49 @@ const AppContent = () => {
     Papa.parse(file, {
       complete: (results) => {
         if (results.data && results.data.length > 1) {
-          // Quick manual parsing to match our format
           const rows = results.data as any[][];
+          
+          // Check if any row is missing a project
+          let fallbackProject: string | null = null;
+          const needsFallback = rows.slice(1).some(row => row[0] && row[1] && (!row[3] || row[3].trim() === ''));
+          
+          if (needsFallback) {
+            const defaultProj = filterProject !== 'All' ? filterProject : '';
+            const userInput = window.prompt(
+              "Some issues in the CSV don't have a project assigned. Please enter a project name to import them into:",
+              defaultProj
+            );
+            
+            if (userInput === null) return; // User cancelled
+            if (!userInput.trim()) {
+              alert("A project name is required to import these defects.");
+              return;
+            }
+            fallbackProject = userInput.trim();
+          }
+
           const importedDefects: Defect[] = [];
           
           for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             if (!row[0] || !row[1]) continue; // Skip invalid rows
             
+            const id = row[0];
+            if (defects.some(d => d.id === id) || importedDefects.some(d => d.id === id)) {
+              continue; // Skip duplicate records
+            }
+            
+            const rowProj = row[3] && row[3].trim() !== '' ? row[3].trim() : fallbackProject;
+            if (rowProj && !projects.includes(rowProj)) {
+              addProject(rowProj);
+              if (socket) socket.emit('add_project', rowProj);
+            }
+
             importedDefects.push({
               id: row[0],
               title: row[1],
               description: row[2] || '',
-              project: row[3] || 'General',
+              project: rowProj || 'General',
               module: row[4] || '',
               priority: row[5] || 'Medium',
               severity: row[6] || 'Minor',
@@ -153,7 +183,19 @@ const AppContent = () => {
             Template
           </button>
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              if (projects.length === 0) {
+                const newProj = window.prompt("Please add a project before importing defects:");
+                if (newProj && newProj.trim()) {
+                  addProject(newProj.trim());
+                  if (socket) socket.emit('add_project', newProj.trim());
+                  // small timeout to ensure state update if needed before click
+                  setTimeout(() => fileInputRef.current?.click(), 100);
+                }
+              } else {
+                fileInputRef.current?.click();
+              }
+            }}
             className="px-3 py-2 bg-slate-100 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
           >
             <Upload className="w-4 h-4" />
@@ -166,7 +208,20 @@ const AppContent = () => {
             Export Excel
           </button>
           <button
-            onClick={() => { setSelectedDefect(undefined); setIsFormOpen(true); }}
+            onClick={() => { 
+              if (projects.length === 0) {
+                const newProj = window.prompt("Please add a project before creating a defect:");
+                if (newProj && newProj.trim()) {
+                  addProject(newProj.trim());
+                  if (socket) socket.emit('add_project', newProj.trim());
+                  setSelectedDefect(undefined); 
+                  setIsFormOpen(true);
+                }
+              } else {
+                setSelectedDefect(undefined); 
+                setIsFormOpen(true);
+              }
+            }}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-colors flex items-center gap-1"
           >
             <Plus className="w-4 h-4" />

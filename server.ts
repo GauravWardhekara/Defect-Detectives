@@ -11,7 +11,10 @@ import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { Bonjour } from "bonjour-service";
 
-const basePath = process.env.USER_DATA_PATH || process.cwd();
+const basePath = process.env.USER_DATA_PATH || path.join(os.homedir(), '.defect-diary');
+if (!fs.existsSync(basePath)) {
+  fs.mkdirSync(basePath, { recursive: true });
+}
 const DB_FILE = path.join(basePath, "defects.enc");
 const CONFIG_FILE = path.join(basePath, "server-config.json");
 
@@ -22,18 +25,27 @@ interface ServerConfig {
   inviteCode: string;
   encryptionKey: string;
   users: Array<{ id: string; name: string; email: string; department: string }>;
+  projects?: string[];
 }
 
 let serverConfig: ServerConfig;
 
 if (fs.existsSync(CONFIG_FILE)) {
   serverConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+  if (!serverConfig.projects) {
+    serverConfig.projects = [];
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverConfig, null, 2));
+  } else {
+    serverConfig.projects = Array.from(new Set(serverConfig.projects));
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverConfig, null, 2));
+  }
 } else {
   serverConfig = {
     orgCode: `ORG-${crypto.randomBytes(4).toString("hex").toUpperCase()}`,
     inviteCode: crypto.randomBytes(3).toString("hex").toUpperCase(),
     encryptionKey: crypto.randomBytes(32).toString("hex"),
     users: [],
+    projects: []
   };
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverConfig, null, 2));
 }
@@ -85,7 +97,17 @@ if (fs.existsSync(DB_FILE)) {
   try {
     const encData = fs.readFileSync(DB_FILE, "utf-8");
     const decData = decryptData(encData, serverConfig.encryptionKey);
-    defects = JSON.parse(decData);
+    const parsed = JSON.parse(decData);
+    
+    // Deduplicate IDs
+    const seenIds = new Set<string>();
+    for (const defect of parsed) {
+      if (seenIds.has(defect.id)) {
+        defect.id = `${defect.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      }
+      seenIds.add(defect.id);
+      defects.push(defect);
+    }
   } catch (e) {
     console.error("Error decrypting/reading defects DB:", e);
   }
@@ -108,6 +130,7 @@ async function startServer() {
   app.use(express.json());
 
   const server = http.createServer(app);
+  let io: Server | null = null;
 
   let isMaster = false;
   let masterUrl: string | null = null;
@@ -160,7 +183,7 @@ async function startServer() {
       console.warn("Could not publish mDNS service (expected in cloud environments)");
     }
 
-    const io = new Server(server, { cors: { origin: "*" } });
+    io = new Server(server, { cors: { origin: "*" } });
 
     io.on("connection", (socket) => {
       console.log("Client connected:", socket.id);
@@ -176,7 +199,7 @@ async function startServer() {
         }
 
         if (isWhitelisted) {
-          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects });
+          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects, projects: serverConfig.projects });
           socket.join(serverConfig.orgCode);
         } else {
           socket.emit("auth_required");
@@ -189,7 +212,7 @@ async function startServer() {
             serverConfig.users.push(data.profile);
             saveConfig();
           }
-          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects });
+          socket.emit("auth_success", { orgCode: serverConfig.orgCode, inviteCode: serverConfig.inviteCode, users: serverConfig.users, defects, projects: serverConfig.projects });
           socket.join(serverConfig.orgCode);
           // Broadcast new user list to all in org
           io.to(serverConfig.orgCode).emit("users_updated", serverConfig.users);
@@ -201,9 +224,66 @@ async function startServer() {
       socket.on("add_defect", (defect) => {
         // Enforce org association
         defect.orgCode = serverConfig.orgCode;
+        
+        // Prevent duplicate IDs
+        if (defects.some(d => d.id === defect.id)) {
+          defect.id = `${defect.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        }
+        
         defects.push(defect);
         saveDefects();
         io.to(serverConfig.orgCode).emit("sync", defects);
+      });
+
+      socket.on("add_project", (projectName: string) => {
+        if (!serverConfig.projects) serverConfig.projects = [];
+        if (!serverConfig.projects.includes(projectName)) {
+          serverConfig.projects.push(projectName);
+          saveConfig();
+          io.to(serverConfig.orgCode).emit("projects_updated", serverConfig.projects);
+        }
+      });
+
+      socket.on("delete_project", (projectName: string) => {
+        if (!serverConfig.projects) return;
+        const idx = serverConfig.projects.indexOf(projectName);
+        if (idx !== -1) {
+          serverConfig.projects.splice(idx, 1);
+          saveConfig();
+          io.to(serverConfig.orgCode).emit("projects_updated", serverConfig.projects);
+          
+          // Delete all associated defects
+          const originalLen = defects.length;
+          defects = defects.filter(d => d.project !== projectName);
+          if (defects.length !== originalLen) {
+            saveDefects();
+            io.to(serverConfig.orgCode).emit("sync", defects);
+          }
+        }
+      });
+
+      socket.on("update_project", ({ oldName, newName }: { oldName: string, newName: string }) => {
+        if (!serverConfig.projects) serverConfig.projects = [];
+        const idx = serverConfig.projects.indexOf(oldName);
+        if (idx !== -1 && newName && !serverConfig.projects.includes(newName)) {
+          serverConfig.projects[idx] = newName;
+          saveConfig();
+          io.to(serverConfig.orgCode).emit("projects_updated", serverConfig.projects);
+          
+          // Also update all defects with the old project name
+          let updated = false;
+          defects = defects.map(d => {
+            if (d.project === oldName) {
+              updated = true;
+              return { ...d, project: newName };
+            }
+            return d;
+          });
+          if (updated) {
+            saveDefects();
+            io.to(serverConfig.orgCode).emit("sync", defects);
+          }
+        }
       });
 
       socket.on("update_defect", (updated) => {
@@ -230,6 +310,70 @@ async function startServer() {
     });
   });
 
+
+  app.post("/api/sync", (req, res) => {
+    const incomingDefects = req.body.defects || [];
+    let changed = false;
+    for (const defect of incomingDefects) {
+      const existing = defects.find((d: any) => d.id === defect.id);
+      if (!existing) {
+        defects.push(defect);
+        changed = true;
+      } else {
+        if (new Date(defect.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+          Object.assign(existing, defect);
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      saveDefects();
+      if (isMaster && io) {
+        io.to(serverConfig.orgCode).emit("sync", defects);
+      }
+    }
+    res.json({ defects, projects: serverConfig.projects });
+  });
+
+  // Background auto-sync for non-master nodes
+  setInterval(async () => {
+    if (!isMaster && masterUrl) {
+      try {
+        const response = await fetch(`${masterUrl}/api/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ defects })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          let changed = false;
+          for (const defect of data.defects || []) {
+            const existing = defects.find((d: any) => d.id === defect.id);
+            if (!existing) {
+              defects.push(defect);
+              changed = true;
+            } else if (new Date(defect.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+              Object.assign(existing, defect);
+              changed = true;
+            }
+          }
+          if (changed) saveDefects();
+          
+          if (data.projects) {
+             if (JSON.stringify(serverConfig.projects) !== JSON.stringify(data.projects)) {
+                serverConfig.projects = data.projects;
+                saveConfig();
+             }
+          }
+        }
+      } catch (e) {
+         // silently fail background sync if master is unreachable
+      }
+    } else if (isMaster) {
+      // Master can also sync with itself just to trigger save if there was some memory updates?
+      // Not needed.
+    }
+  }, 10000); // 10 seconds idle sync
   app.post("/api/promote", (req, res) => {
     isMaster = true;
     const interfaces = os.networkInterfaces();

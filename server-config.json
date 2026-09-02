@@ -2,5 +2,13 @@
   "orgCode": "ORG-50417C99",
   "inviteCode": "FE05E1",
   "encryptionKey": "34dd2dbedc439214911db0e710384411028aeb11fb425fd27b48c4e2290bcfbd",
-  "users": []
+  "users": [
+    {
+      "id": "79fee855-47fd-467a-b0cc-8ff0232bff6b",
+      "name": "Gaurav Wardhekar",
+      "email": "gauravwardhekar@local",
+      "department": "QA Manager"
+    }
+  ],
+  "projects": []
 }
